@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa Global - Floración, Plagas y Clima con UV</title>
+
+  <!-- Leaflet y MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
+    header { background: #2c3e50; color: white; padding: 12px 20px; text-align: center; }
+    #selector { text-align: center; margin: 10px 0; }
+    select, input, button {
+      padding: 6px 10px;
+      font-size: 15px;
+      border-radius: 6px;
+      margin: 0 5px;
+    }
+    #map, #windyContainer { width: 100%; height: 75vh; }
+    #windyContainer { display: none; text-align: center; }
+    iframe { width: 95%; height: 85vh; border: none; border-radius: 8px; }
+    .legend {
+      background: white; padding: 6px 10px; border-radius: 8px;
+      font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.3); line-height: 1.4;
+    }
+    .update-box {
+      position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
+      padding: 6px 12px; border-radius: 8px; font-size: 13px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000;
+    }
+    #accountForm {
+      background: white; max-width: 400px; margin: 10px auto; padding: 15px;
+      border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    #searchLocation {
+      margin: 10px auto; max-width: 400px; text-align: center;
+    }
+    #searchLocation input {
+      width: 70%;
+      margin-right: 5px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h2>🌍 Mapas Globales: Floración, Plagas y Clima (con Monitoreo UV)</h2>
+</header>
+
+<div id="selector">
+  <label for="mapSelect"><b>Selecciona mapa:</b></label>
+  <select id="mapSelect" onchange="cambiarMapa()">
+    <option value="floracion">🌸 Floración</option>
+    <option value="plagas">🐛 Plagas</option>
+    <option value="clima">🌦 Clima (Windy)</option>
+  </select>
+
+  <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
+    <option value="temp">🌡 Temperatura</option>
+    <option value="rh">💧 Humedad relativa</option>
+    <option value="co">🧪 Monóxido de carbono (CO)</option>
+    <option value="uvIndex">☀ Índice UV</option>
+  </select>
+</div>
+
+<!-- Formulario para crear cuenta -->
+<div id="accountForm">
+  <h3>Crear Cuenta</h3>
+  <form id="formCrearCuenta" onsubmit="return crearCuenta(event)">
+    <input type="text" id="username" placeholder="Nombre de usuario" required />
+    <input type="email" id="email" placeholder="Correo electrónico" required />
+    <label>¿Para qué usarás la página?</label><br />
+    <input type="radio" id="agricultura" name="uso" value="Agricultura" required />
+    <label for="agricultura">Agricultura</label>
+    <input type="radio" id="investigacion" name="uso" value="Investigación" />
+    <label for="investigacion">Investigación</label><br /><br />
+    <button type="submit">Crear cuenta</button>
+  </form>
+</div>
+
+<!-- Buscador de ubicación -->
+<div id="searchLocation">
+  <input type="text" id="inputLocation" placeholder="Buscar ubicación (ej. Ciudad, país)" />
+  <button onclick="buscarUbicacion()">Buscar</button>
+</div>
+
+<div id="map"></div>
+
+<div id="windyContainer">
+  <iframe id="windyFrame"></iframe>
+</div>
+
+<div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
+
+<script>
+  // Función para crear cookie simple (30 días)
+  function setCookie(nombre, valor, dias) {
+    const d = new Date();
+    d.setTime(d.getTime() + (dias*24*60*60*1000));
+    let expires = "expires="+ d.toUTCString();
+    document.cookie = nombre + "=" + valor + ";" + expires + ";path=/";
+  }
+
+  // Función para obtener cookie por nombre
+  function getCookie(nombre) {
+    let name = nombre + "=";
+    let decodedCookie = decodeURIComponent(document.cookie);
+    let ca = decodedCookie.split(';');
+    for(let c of ca) {
+      while (c.charAt(0) == ' ') c = c.substring(1);
+      if (c.indexOf(name) == 0) return c.substring(name.length, c.length);
+    }
+    return "";
+  }
+
+  // Crear cuenta y guardar cookies
+  function crearCuenta(event) {
+    event.preventDefault();
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const uso = document.querySelector('input[name="uso"]:checked').value;
+
+    if(!username || !email || !uso) {
+      alert("Por favor completa todos los campos.");
+      return false;
+    }
+
+    // Guardar en cookies (ejemplo básico, no seguro para producción)
+    setCookie("username", username, 30);
+    setCookie("email", email, 30);
+    setCookie("uso", uso, 30);
+
+    alert(Cuenta creada para ${username} (${email}). Uso: ${uso});
+
+    // Solicitar permiso para notificaciones
+    if (Notification && Notification.permission !== "granted") {
+      Notification.requestPermission().then(permission => {
+        if (permission === "granted") {
+          new Notification("Bienvenido a Mapas Globales 🌍");
+        }
+      });
+    }
+
+    return false;
+  }
+
+  // Buscar ubicación con API de Nominatim (OpenStreetMap)
+  function buscarUbicacion() {
+    const location = document.getElementById('inputLocation').value.trim();
+    if (!location) {
+      alert("Ingresa una ubicación para buscar.");
+      return;
+    }
+
+    fetch(https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(location)})
+      .then(response => response.json())
+      .then(data => {
+        if(data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          map.setView([lat, lon], 10);
+          L.marker([lat, lon]).addTo(map)
+            .bindPopup(<b>Ubicación encontrada:</b> ${location})
+            .openPopup();
+        } else {
+          alert("No se encontró la ubicación.");
+        }
+      })
+      .catch(() => alert("Error buscando la ubicación."));
+  }
+
+  // === MAPA LEAFLET ===
+  const map = L.map('map').setView([0, 0], 2);
+
+  // Capas base
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const satelite = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; Google Maps'
+  });
+
+  L.control.layers({
+    "🗺 Mapa": osm,
+    "🛰 Satélite": satelite
+  }).addTo(map);
+
+  // === FLORACIÓN ===
+  const capaFloracion = L.markerClusterGroup();
+  function colorFloracion(p) {
+    return p > 80 ? '#2ecc71' :
+           p > 50 ? '#f1c40f' :
+           p > 20 ? '#e67e22' : '#e74c3c';
+  }
+
+  function generarFloracion() {
+    capaFloracion.clearLayers();
+    for (let lat = -80; lat <= 80; lat += 5) {
+      for (let lon = -180; lon <= 180; lon += 5) {
+        const p = Math.max(0, Math.min(100, 50 + 40 * Math.sin((lat + Date.now()/1000000) * Math.PI / 90)));
+        const color = colorFloracion(p);
+        const marker = L.circleMarker([lat, lon], {
+          radius: 5, fillColor: color, color: '#333',
+          weight: 1, opacity: 1, fillOpacity: 0.8
+        }).bindPopup(<b>Floración estimada:</b> ${p.toFixed(1)}%<br><b>Lat:</b> ${lat}, <b>Lon:</b> ${lon});
+        capaFloracion.addLayer(marker);
+      }
+    }
+  }
+
+  // === PLAGAS ===
+  const capaPlagas = L.markerClusterGroup();
+  function generarPlagas() {
+    capaPlagas.clearLayers();
+    for (let i = 0; i < 120; i++) {
+      const lat = (Math.random() * 160) - 80;
+      const lon = (Math.random() * 360) - 180;
+      const plagas = ["Pulgón verde", "Mosca blanca", "Oruga", "Langosta", "Trips", "Escarabajo"];
+      const cultivos = ["Trigo", "Maíz", "Cítricos", "Soja", "Algodón", "Papa"];
+      const plaga = plagas[Math.floor(Math.random() * plagas.length)];
+      const cultivo = cultivos[Math.floor(Math.random() * cultivos.length)];
+      const fecha = new Date().toISOString().split('T')[0];
+      const marker = L.circleMarker([lat, lon], {
+        radius: 7, fillColor: "red", color: "#800",
+        weight: 1, opacity: 1, fillOpacity: 0.8
+      }).bindPopup(<b>Plaga:</b> ${plaga}<br><b>Cultivo:</b> ${cultivo}<br><b>Fecha:</b> ${fecha});
+      capaPlagas.addLayer(marker);
+    }
+  }
+
+  // === ACTUALIZACIÓN DE DATOS ===
+  function actualizarDatos() {
+    generarFloracion();
+    generarPlagas();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  }
+
+  actualizarDatos();
+  capaFloracion.addTo(map);
+  setInterval(actualizarDatos,60000);
