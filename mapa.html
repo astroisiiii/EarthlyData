@@ -202,23 +202,23 @@
 </header>
 
 <div id="selector">
-  <label for="mapSelect"><b>Selecciona mapa:</b></label>
+  <label for="mapSelect"><b>Select map:</b></label>
   <select id="mapSelect" onchange="cambiarMapa()">
-    <option value="floracion">🌸 Floración</option>
-    <option value="clima">🌦️ Clima (Windy)</option>
+    <option value="floracion">🌸 Flowering</option>
+    <option value="clima">🌦️ Climate (Windy)</option>
   </select>
 
   <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
-    <option value="temp">🌡 Temperatura</option>
-    <option value="rh">💧 Humedad relativa</option>
-    <option value="co">🧪 Monóxido de carbono (CO)</option>
-    <option value="uvIndex">☀️ Índice UV</option>
+    <option value="temp">🌡 Temperature</option>
+    <option value="rh">💧 Relative Humidity</option>
+    <option value="co">🧪 Carbon Monoxide (CO)</option>
+    <option value="uvIndex">☀️ UV Index</option>
   </select>
 
   <select id="filtroFloracion" onchange="filtrarFloracion()">
-    <option value="todas">Mostrar todas</option>
-    <option value="alta">🌿 Alta floración</option>
-    <option value="baja">🍂 Baja floración</option>
+    <option value="todas">Show all</option>
+    <option value="alta">🌿 High flowering</option>
+    <option value="baja">🍂 Low flowering</option>
   </select>
 </div>
 
@@ -227,22 +227,22 @@
   <iframe id="windyFrame" title="Windy embed"></iframe>
 </div>
 
-<div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
-<button id="btnUbicacion">📍 Mi ubicación</button>
+<div class="update-box">🔄 Last update: <span id="lastUpdate">---</span></div>
+<button id="btnUbicacion">📍 My location</button>
 
-<!-- PANEL UBICACIÓN USUARIO -->
+<!-- USER LOCATION PANEL -->
 <div id="userLocationPanel">
-  <h4>📍 Tu Ubicación</h4>
-  <div id="locationInfo">Obteniendo ubicación...</div>
+  <h4>📍 Your Location</h4>
+  <div id="locationInfo">Getting location...</div>
 </div>
 
-<!-- LÍNEA DE TIEMPO -->
+<!-- TIMELINE -->
 <div id="timeline">
-  <h3>📅 Línea de Tiempo - Floración</h3>
+  <h3>📅 Timeline - Flowering</h3>
   <div id="timeInfo">
     <span id="currentDate">Noviembre 2024</span>
     <span>
-      <button id="playBtn">▶️ Reproducir</button>
+      <button id="playBtn">▶️ Play</button>
     </span>
   </div>
   <input type="range" id="timeSlider" min="0" max="11" value="0" step="1">
@@ -336,10 +336,10 @@
     if (reproduciendo) {
       clearInterval(intervalId);
       reproduciendo = false;
-      document.getElementById('playBtn').textContent = '▶️ Reproducir';
+      document.getElementById('playBtn').textContent = '▶️ Play';
     } else {
       reproduciendo = true;
-      document.getElementById('playBtn').textContent = '⏸️ Pausar';
+      document.getElementById('playBtn').textContent = '⏸️ Pause';
       intervalId = setInterval(() => {
         periodoActual = (periodoActual + 1) % periodoCompleto.length;
         document.getElementById('timeSlider').value = periodoActual;
