@@ -447,10 +447,10 @@
     const panel = document.getElementById('userLocationPanel');
     const info = document.getElementById('locationInfo');
     info.innerHTML = `
-      <b>Ciudad:</b> ${ciudad}<br>
+      <b>City</b> ${ciudad}<br>
       <b>Lat:</b> ${latitude.toFixed(4)}<br>
       <b>Lon:</b> ${longitude.toFixed(4)}<br>
-      <b>Precisión:</b> ±${Math.round(accuracy)}m
+      <b>Precision:</b> ±${Math.round(accuracy)}m
     `;
     panel.style.display = 'block';
     
