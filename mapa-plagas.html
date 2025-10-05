@@ -12,21 +12,64 @@
   <style>
     :root{--accent:#f9a825}
     *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,Helvetica,sans-serif}
-    header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:linear-gradient(90deg,#fdd835,#fbc02d);color:#3e2723}
-    header h1{font-size:1.05rem;margin:0}
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 3rem;
+      background: rgba(165,214,167,0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 1.8rem; color: #2e7d32; font-weight: 700; }
+    nav a {
+      margin-left: 2rem;
+      text-decoration: none;
+      color: #388e3c;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    nav a:hover { color: #66bb6a; }
     #controls{padding:10px;text-align:center;background:#fff}
     select,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;margin:0 6px}
     #map{height:78vh;width:100%}
     .info{position:absolute;right:14px;top:86px;background:rgba(255,255,255,0.96);padding:10px;border-radius:10px;z-index:1000;box-shadow:0 4px 14px rgba(0,0,0,0.12);font-size:13px}
-    #btnCenter{position:absolute;right:14px;bottom:18px;z-index:1000;padding:10px;border-radius:8px;border:none;background:var(--accent);cursor:pointer}
+    #btnCenter{
+      position:absolute;
+      right:14px;
+      bottom:18px;
+      z-index:1000;
+      padding:12px 18px;
+      border-radius:30px;
+      border:none;
+      background:#4caf50;
+      color:white;
+      cursor:pointer;
+      font-weight:600;
+      box-shadow:0 4px 15px rgba(0,0,0,0.15);
+      transition:all 0.3s;
+    }
+    #btnCenter:hover{
+      background:#66bb6a;
+      transform:translateY(-2px);
+      box-shadow:0 6px 20px rgba(0,0,0,0.2);
+    }
     #legend{position:absolute;left:14px;top:86px;background:rgba(255,255,255,0.96);padding:10px;border-radius:10px;z-index:1000;box-shadow:0 4px 14px rgba(0,0,0,0.12);font-size:13px}
   </style>
 </head>
 <body>
 
 <header>
-  <h1>EarthlyData — Floración (NDVI) · Plagas reales · Clima</h1>
-  <div style="font-size:13px;color:#4e342e">GBIF · NASA GIBS · OpenWeather</div>
+  <h1>EarthlyData</h1>
+  <nav>
+    <a href="#como-funciona">Home</a>
+    <a href="mapa.html">Map</a>
+    <a href="mapa-plagas.html">Pest Map</a>
+    <a href="#impacto">Information</a>
+    <a href="#impacto">Profile</a>
+  </nav>
 </header>
 
 <div id="controls">

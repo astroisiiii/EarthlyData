@@ -14,52 +14,179 @@
 
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-    body { background: linear-gradient(180deg, #fffde7 0%, #fff8e1 100%); color: #5a4a00; }
-    header { display:flex; justify-content:space-between; align-items:center; padding:1.5rem 3rem; background: rgba(255,255,255,0.85); backdrop-filter: blur(10px); position: sticky; top: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-    header h1 { font-size: 1.8rem; color: #f9a825; font-weight: 700; }
-    nav a { margin-left: 2rem; text-decoration: none; color: #f57f17; font-weight: 500; transition: color 0.3s; }
-    nav a:hover { color: #fbc02d; }
-    #selector { text-align: center; margin: 12px 0; padding: 0.5rem 1rem; }
-    select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 6px; }
-    #map, #windyContainer { width: 100%; height: 75vh; display: none; }
+    body {
+      background: linear-gradient(180deg, #fffde7 0%, #fff8e1 100%);
+      color: #5a4a00;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 3rem;
+      background: rgba(165,214,167,0.95);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 1.8rem; color: #2e7d32; font-weight: 700; }
+    nav a {
+      margin-left: 2rem;
+      text-decoration: none;
+      color: #388e3c;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    nav a:hover { color: #66bb6a; }
+    
+    #selector {
+      text-align: center;
+      padding: 2rem;
+      max-width: 1100px;
+      margin: auto;
+    }
+    
+    select {
+      background: #fff8e1;
+      border: 1px solid #f9a825;
+      border-radius: 15px;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      color: #5a4a00;
+      margin: 0 0.5rem;
+      font-weight: 500;
+      transition: all 0.3s;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    select:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      background: #ffee58;
+    }
+    
+    #map, #windyContainer { 
+      width: 100%; 
+      height: 75vh; 
+      display: none;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      margin: 0 2rem;
+    }
     #windyContainer { text-align: center; }
     #map { display: block; }
-    iframe { width: 95%; height: 75vh; border: none; border-radius: 8px; }
-    .update-box { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 6px 12px; border-radius: 8px; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000; }
-    #btnUbicacion {
-      position: absolute; bottom: 20px; right: 20px; z-index: 1000;
-      background: #fbc02d; color: #333; border: none; padding: 10px 14px;
-      border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    
+    iframe { 
+      width: 100%; 
+      height: 75vh; 
+      border: none; 
+      border-radius: 15px;
     }
-    #btnUbicacion:hover { background: #f9a825; }
+    
+    .update-box { 
+      position: absolute; 
+      top: 10px; 
+      right: 10px; 
+      background: rgba(255,255,255,0.95);
+      padding: 10px 15px;
+      border-radius: 15px;
+      font-size: 13px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      z-index: 1000;
+      color: #5a4a00;
+      font-weight: 500;
+    }
+    
+    #btnUbicacion {
+      position: absolute; 
+      bottom: 20px; 
+      right: 20px; 
+      z-index: 1000;
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 12px 18px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      transition: all 0.3s;
+    }
+    #btnUbicacion:hover { 
+      background: #66bb6a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+    }
     
     /* === LÍNEA DE TIEMPO === */
     #timeline {
-      position: absolute; bottom: 80px; left: 20px; right: 20px; z-index: 1000;
-      background: rgba(255,255,255,0.95); padding: 15px; border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none;
+      position: absolute;
+      bottom: 80px;
+      left: 20px;
+      right: 20px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      display: none;
     }
-    #timeline h3 { margin: 0 0 10px 0; color: #f9a825; font-size: 16px; }
+    #timeline h3 { 
+      margin: 0 0 15px 0; 
+      color: #2e7d32; 
+      font-size: 18px;
+      font-weight: 600;
+    }
     #timeSlider {
-      width: 100%; margin: 10px 0; accent-color: #f9a825;
+      width: 100%;
+      margin: 15px 0;
+      accent-color: #2e7d32;
+      height: 8px;
     }
     #timeInfo {
-      display: flex; justify-content: space-between; font-size: 14px; color: #666;
+      display: flex;
+      justify-content: space-between;
+      font-size: 14px;
+      color: #5a4a00;
+      font-weight: 500;
     }
     #playBtn {
-      background: #2ecc71; color: white; border: none; padding: 8px 15px;
-      border-radius: 5px; cursor: pointer; margin-left: 10px;
+      background: #4caf50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 30px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
-    #playBtn:hover { background: #27ae60; }
+    #playBtn:hover { 
+      background: #66bb6a;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
     
     /* === PANEL UBICACIÓN === */
     #userLocationPanel {
-      position: absolute; top: 60px; left: 10px; z-index: 1000;
-      background: rgba(255,255,255,0.95); padding: 10px; border-radius: 8px;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.2); font-size: 12px; max-width: 250px;
+      position: absolute;
+      top: 80px;
+      left: 20px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.95);
+      padding: 15px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      font-size: 13px;
+      max-width: 280px;
       display: none;
     }
-    #userLocationPanel h4 { margin: 0 0 5px 0; color: #f9a825; }
+    #userLocationPanel h4 { 
+      margin: 0 0 8px 0; 
+      color: #2e7d32;
+      font-size: 16px;
+      font-weight: 600;
+    }
   </style>
 </head>
 <body>
@@ -67,11 +194,11 @@
 <header>
   <h1>EarthlyData</h1>
   <nav>
-    <a href="index.html">Inicio</a>
-    <a href="mapa.html">Mapa</a>
-    <a href="mapa-plagas.html">Mapa Plagas</a>
-    <a href="#impacto">Información</a>
-    <a href="#perfil">Perfil</a>
+    <a href="#como-funciona">Home</a>
+    <a href="mapa.html">Map</a>
+    <a href="mapa-plagas.html">Pest Map</a>
+    <a href="#impacto">Information</a>
+    <a href="#impacto">Profile</a>
   </nav>
 </header>
 
