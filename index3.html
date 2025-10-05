@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mapa Global - Floración, Plagas y Clima con UV</title>
+
+  <!-- Leaflet y MarkerCluster -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
+    header { background: #2c3e50; color: white; padding: 12px 20px; text-align: center; }
+    #selector { text-align: center; margin: 10px 0; }
+    select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 5px; }
+    #map, #windyContainer { width: 100%; height: 85vh; }
+    #windyContainer { display: none; text-align: center; }
+    iframe { width: 95%; height: 85vh; border: none; border-radius: 8px; }
+    .update-box {
+      position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
+      padding: 6px 12px; border-radius: 8px; font-size: 13px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h2>🌍 Mapas Globales: Floración, Plagas y Clima (con Monitoreo UV)</h2>
+</header>
+
+<div id="selector">
+  <label for="mapSelect"><b>Selecciona mapa:</b></label>
+  <select id="mapSelect" onchange="cambiarMapa()">
+    <option value="floracion">🌸 Floración</option>
+    <option value="plagas">🐛 Plagas</option>
+    <option value="clima">🌦️ Clima (Windy)</option>
+  </select>
+
+  <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
+    <option value="temp">🌡 Temperatura</option>
+    <option value="rh">💧 Humedad relativa</option>
+    <option value="co">🧪 Monóxido de carbono (CO)</option>
+    <option value="uvIndex">☀️ Índice UV</option>
+  </select>
+</div>
+
+<div id="map"></div>
+
+<div id="windyContainer">
+  <iframe id="windyFrame"></iframe>
+</div>
+
+<div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
+
+<script>
+  // === MAPA LEAFLET ===
+  const map = L.map('map').setView([-27.5, -70.8], 4);
+
+  // Capas base (compatibles con carga local)
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
+
+  const satelite = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: '&copy; Esri, Maxar, Earthstar Geographics' }
+  );
+
+  L.control.layers({ "🗺️ Mapa": osm, "🛰️ Satélite": satelite }).addTo(map);
+
+  // === FLORACIÓN ===
+  const capaFloracion = L.markerClusterGroup();
+  function colorFloracion(p) {
+    return p > 80 ? '#2ecc71' :
+           p > 50 ? '#f1c40f' :
+           p > 20 ? '#e67e22' : '#e74c3c';
+  }
+
+  function generarFloracion() {
+    capaFloracion.clearLayers();
+    for (let lat = -80; lat <= 80; lat += 5) {
+      for (let lon = -180; lon <= 180; lon += 5) {
+        const p = Math.max(0, Math.min(100, 50 + 40 * Math.sin((lat + Date.now()/1000000) * Math.PI / 90)));
+        const color = colorFloracion(p);
+        const marker = L.circleMarker([lat, lon], {
+          radius: 5, fillColor: color, color: '#333',
+          weight: 1, opacity: 1, fillOpacity: 0.8
+        }).bindPopup(`<b>Floración estimada:</b> ${p.toFixed(1)}%<br><b>Lat:</b> ${lat}, <b>Lon:</b> ${lon}`);
+        capaFloracion.addLayer(marker);
+      }
+    }
+  }
+
+  // === PLAGAS ===
+  const capaPlagas = L.markerClusterGroup();
+  function generarPlagas() {
+    capaPlagas.clearLayers();
+    for (let i = 0; i < 100; i++) {
+      const lat = (Math.random() * 160) - 80;
+      const lon = (Math.random() * 360) - 180;
+      const plagas = ["Pulgón verde", "Mosca blanca", "Oruga", "Langosta", "Trips", "Escarabajo"];
+      const cultivos = ["Trigo", "Maíz", "Cítricos", "Soja", "Algodón", "Papa"];
+      const plaga = plagas[Math.floor(Math.random() * plagas.length)];
+      const cultivo = cultivos[Math.floor(Math.random() * cultivos.length)];
+      const fecha = new Date().toISOString().split('T')[0];
+      const marker = L.circleMarker([lat, lon], {
+        radius: 7, fillColor: "red", color: "#800",
+        weight: 1, opacity: 1, fillOpacity: 0.8
+      }).bindPopup(`<b>Plaga:</b> ${plaga}<br><b>Cultivo:</b> ${cultivo}<br><b>Fecha:</b> ${fecha}`);
+      capaPlagas.addLayer(marker);
+    }
+  }
+
+  // === ACTUALIZACIÓN DE DATOS ===
+  function actualizarDatos() {
+    generarFloracion();
+    generarPlagas();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  }
+
+  actualizarDatos();
+  capaFloracion.addTo(map);
+  setInterval(actualizarDatos, 60000);
+
+  // === CAMBIO DE MAPA ===
+  function cambiarMapa() {
+    const tipo = document.getElementById('mapSelect').value;
+    const mapDiv = document.getElementById('map');
+    const windyDiv = document.getElementById('windyContainer');
+    const layerSelect = document.getElementById('layerSelect');
+
+    if (tipo === "clima") {
+      mapDiv.style.display = "none";
+      windyDiv.style.display = "block";
+      layerSelect.style.display = "inline-block";
+      cambiarCapaClima();
+    } else {
+      mapDiv.style.display = "block";
+      windyDiv.style.display = "none";
+      layerSelect.style.display = "none";
+      if (tipo === "floracion") {
+        map.addLayer(capaFloracion);
+        map.removeLayer(capaPlagas);
+      } else if (tipo === "plagas") {
+        map.addLayer(capaPlagas);
+        map.removeLayer(capaFloracion);
+      }
+      map.invalidateSize();
+    }
+  }
+
+  // === CLIMA (WINDY) ===
+  function cambiarCapaClima() {
+    const overlay = document.getElementById('layerSelect').value;
+    const iframe = document.getElementById('windyFrame');
+    iframe.src = `https://embed.windy.com/embed2.html?lat=-33.45&lon=-70.66&zoom=3&level=surface&overlay=${overlay}&menu=true&message=true&calendar=now&pressure=true&type=map&location=coordinates`;
+  }
+</script>
+</body>
+</html>

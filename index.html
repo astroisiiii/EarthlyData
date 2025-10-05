@@ -3,164 +3,169 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa Global - Floración, Plagas y Clima con UV</title>
-
-  <!-- Leaflet y MarkerCluster -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.css" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
-
+  <title>EarthlyData — Donde la Tierra Habla en Colores</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
-    header { background: #2c3e50; color: white; padding: 12px 20px; text-align: center; }
-    #selector { text-align: center; margin: 10px 0; }
-    select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 5px; }
-    #map, #windyContainer { width: 100%; height: 85vh; }
-    #windyContainer { display: none; text-align: center; }
-    iframe { width: 95%; height: 85vh; border: none; border-radius: 8px; }
-    .update-box {
-      position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9);
-      padding: 6px 12px; border-radius: 8px; font-size: 13px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000;
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+    body {
+      background: linear-gradient(180deg, #fffde7 0%, #fff8e1 100%);
+      color: #5a4a00;
     }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.5rem 3rem;
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px);
+      position: sticky;
+      top: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 1.8rem; color: #f9a825; font-weight: 700; }
+    nav a {
+      margin-left: 2rem;
+      text-decoration: none;
+      color: #f57f17;
+      font-weight: 500;
+      transition: color 0.3s;
+    }
+    nav a:hover { color: #fbc02d; }
+
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 6rem 2rem;
+      background: url('https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1400&q=80') center/cover no-repeat;
+      color: #fffde7;
+      position: relative;
+    }
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+    }
+    .hero > * { position: relative; z-index: 1; }
+    .hero h2 { font-size: 2.8rem; margin-bottom: 1rem; font-weight: 700; }
+    .hero p { max-width: 700px; margin-bottom: 2rem; font-size: 1.1rem; }
+    .btn-primary {
+      background: #fbc02d;
+      color: #5a4a00;
+      padding: 0.8rem 1.5rem;
+      border-radius: 30px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s;
+    }
+    .btn-primary:hover { background: #ffee58; }
+
+    section {
+      padding: 4rem 2rem;
+      max-width: 1100px;
+      margin: auto;
+    }
+    .section-title { text-align: center; margin-bottom: 2rem; font-size: 2rem; color: #f57f17; }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+    .card {
+      background: #fff8e1;
+      border-radius: 15px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s, box-shadow 0.3s;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+    .card h3 { color: #f9a825; margin-bottom: 0.5rem; }
+    .card p { color: #5a4a00; }
+
+    footer {
+      background: #fbc02d;
+      color: #3e2723;
+      text-align: center;
+      padding: 2rem;
+      font-weight: 500;
+    }
+    footer p { opacity: 0.9; }
   </style>
 </head>
 <body>
+  <header>
+    <h1>EarthlyData</h1>
+    <nav>
+      <a href="#como-funciona">Inicio</a>
 
-<header>
-  <h2>🌍 Mapas Globales: Floración, Plagas y Clima (con Monitoreo UV)</h2>
-</header>
+      <a href="#explora">Mapa</a>
+        <a href="#impacto">Información</a>
+      <a href="#impacto">Perfil</a>  
+    </nav>
+  </header>
 
-<div id="selector">
-  <label for="mapSelect"><b>Selecciona mapa:</b></label>
-  <select id="mapSelect" onchange="cambiarMapa()">
-    <option value="floracion">🌸 Floración</option>
-    <option value="plagas">🐛 Plagas</option>
-    <option value="clima">🌦️ Clima (Windy)</option>
-  </select>
+  <section class="hero">
+    <h2>Donde la Tierra Habla en Colores</h2>
+    <p>EarthlyData transforma observaciones satelitales de la NASA en información útil para investigadores y agricultores que buscan entender la vida en floración del planeta.</p>
+    <a href="#explora" class="btn-primary">Explorar datos</a>
+  </section>
 
-  <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
-    <option value="temp">🌡 Temperatura</option>
-    <option value="rh">💧 Humedad relativa</option>
-    <option value="co">🧪 Monóxido de carbono (CO)</option>
-    <option value="uvIndex">☀️ Índice UV</option>
-  </select>
-</div>
+  <section id="como-funciona">
+    <h2 class="section-title">Cómo funciona EarthlyData</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>1. Observación satelital</h3>
+        <p>Recolectamos datos de alta resolución de Landsat y MODIS para analizar los patrones de vegetación y floración a lo largo del tiempo.</p>
+      </div>
+      <div class="card">
+        <h3>2. Análisis de floración</h3>
+        <p>Mediante algoritmos espectrales, detectamos y clasificamos eventos de floración con precisión temporal y espacial.</p>
+      </div>
+      <div class="card">
+        <h3>3. Visualización intuitiva</h3>
+        <p>Explora mapas interactivos y gráficos dinámicos que revelan las tendencias de floración global o regional.</p>
+      </div>
+    </div>
+  </section>
 
-<div id="map"></div>
+  <section id="impacto">
+    <h2 class="section-title">Por qué importa</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Investigación ecológica</h3>
+        <p>Ayuda a científicos a comprender los efectos del clima en los ecosistemas y la biodiversidad a través de la fenología floral.</p>
+      </div>
+      <div class="card">
+        <h3>Gestión agrícola</h3>
+        <p>Permite a agricultores optimizar siembras, cosechas y control de plagas según los ciclos naturales de floración.</p>
+      </div>
+      <div class="card">
+        <h3>Conservación y planificación</h3>
+        <p>Brinda información para tomar decisiones informadas en conservación de especies y manejo sostenible del territorio.</p>
+      </div>
+    </div>
+  </section>
 
-<div id="windyContainer">
-  <iframe id="windyFrame"></iframe>
-</div>
+  <section id="explora">
+    <h2 class="section-title">Explora la floración global</h2>
+    <p style="text-align:center; max-width:700px; margin:auto; margin-bottom:2rem;">Selecciona una región y un período para visualizar los eventos de floración detectados por los satélites de la NASA.</p>
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?auto=format&fit=crop&w=900&q=80" alt="Flores en floración" style="border-radius:15px; width:90%; max-width:800px; margin-bottom:1.5rem; box-shadow:0 4px 15px rgba(0,0,0,0.1);">
+      <div style="background:#fff9c4; border-radius:15px; width:90%; max-width:800px; height:400px; display:flex; align-items:center; justify-content:center; color:#5a4a00; font-weight:500;">
+        [Mapa interactivo próximamente]
+      </div>
+      <button class="btn-primary" style="margin-top:1.5rem;">Ver demostración</button>
+    </div>
+  </section>
 
-<div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
-
-<script>
-  // === MAPA LEAFLET ===
-  const map = L.map('map').setView([-27.5, -70.8], 4);
-
-  // Capas base (compatibles con carga local)
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19,
-    attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  const satelite = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution: '&copy; Esri, Maxar, Earthstar Geographics' }
-  );
-
-  L.control.layers({ "🗺️ Mapa": osm, "🛰️ Satélite": satelite }).addTo(map);
-
-  // === FLORACIÓN ===
-  const capaFloracion = L.markerClusterGroup();
-  function colorFloracion(p) {
-    return p > 80 ? '#2ecc71' :
-           p > 50 ? '#f1c40f' :
-           p > 20 ? '#e67e22' : '#e74c3c';
-  }
-
-  function generarFloracion() {
-    capaFloracion.clearLayers();
-    for (let lat = -80; lat <= 80; lat += 5) {
-      for (let lon = -180; lon <= 180; lon += 5) {
-        const p = Math.max(0, Math.min(100, 50 + 40 * Math.sin((lat + Date.now()/1000000) * Math.PI / 90)));
-        const color = colorFloracion(p);
-        const marker = L.circleMarker([lat, lon], {
-          radius: 5, fillColor: color, color: '#333',
-          weight: 1, opacity: 1, fillOpacity: 0.8
-        }).bindPopup(`<b>Floración estimada:</b> ${p.toFixed(1)}%<br><b>Lat:</b> ${lat}, <b>Lon:</b> ${lon}`);
-        capaFloracion.addLayer(marker);
-      }
-    }
-  }
-
-  // === PLAGAS ===
-  const capaPlagas = L.markerClusterGroup();
-  function generarPlagas() {
-    capaPlagas.clearLayers();
-    for (let i = 0; i < 100; i++) {
-      const lat = (Math.random() * 160) - 80;
-      const lon = (Math.random() * 360) - 180;
-      const plagas = ["Pulgón verde", "Mosca blanca", "Oruga", "Langosta", "Trips", "Escarabajo"];
-      const cultivos = ["Trigo", "Maíz", "Cítricos", "Soja", "Algodón", "Papa"];
-      const plaga = plagas[Math.floor(Math.random() * plagas.length)];
-      const cultivo = cultivos[Math.floor(Math.random() * cultivos.length)];
-      const fecha = new Date().toISOString().split('T')[0];
-      const marker = L.circleMarker([lat, lon], {
-        radius: 7, fillColor: "red", color: "#800",
-        weight: 1, opacity: 1, fillOpacity: 0.8
-      }).bindPopup(`<b>Plaga:</b> ${plaga}<br><b>Cultivo:</b> ${cultivo}<br><b>Fecha:</b> ${fecha}`);
-      capaPlagas.addLayer(marker);
-    }
-  }
-
-  // === ACTUALIZACIÓN DE DATOS ===
-  function actualizarDatos() {
-    generarFloracion();
-    generarPlagas();
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
-  }
-
-  actualizarDatos();
-  capaFloracion.addTo(map);
-  setInterval(actualizarDatos, 60000);
-
-  // === CAMBIO DE MAPA ===
-  function cambiarMapa() {
-    const tipo = document.getElementById('mapSelect').value;
-    const mapDiv = document.getElementById('map');
-    const windyDiv = document.getElementById('windyContainer');
-    const layerSelect = document.getElementById('layerSelect');
-
-    if (tipo === "clima") {
-      mapDiv.style.display = "none";
-      windyDiv.style.display = "block";
-      layerSelect.style.display = "inline-block";
-      cambiarCapaClima();
-    } else {
-      mapDiv.style.display = "block";
-      windyDiv.style.display = "none";
-      layerSelect.style.display = "none";
-      if (tipo === "floracion") {
-        map.addLayer(capaFloracion);
-        map.removeLayer(capaPlagas);
-      } else if (tipo === "plagas") {
-        map.addLayer(capaPlagas);
-        map.removeLayer(capaFloracion);
-      }
-      map.invalidateSize();
-    }
-  }
-
-  // === CLIMA (WINDY) ===
-  function cambiarCapaClima() {
-    const overlay = document.getElementById('layerSelect').value;
-    const iframe = document.getElementById('windyFrame');
-    iframe.src = `https://embed.windy.com/embed2.html?lat=-33.45&lon=-70.66&zoom=3&level=surface&overlay=${overlay}&menu=true&message=true&calendar=now&pressure=true&type=map&location=coordinates`;
-  }
-</script>
+  <footer>
+    <p>© 2025 EarthlyData — Proyecto para el NASA Space Apps Challenge. Ciencia que florece para un futuro sostenible.</p>
+  </footer>
 </body>
 </html>
