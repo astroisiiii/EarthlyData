@@ -21,10 +21,97 @@
     nav a:hover { color: #fbc02d; }
     #selector { text-align: center; margin: 12px 0; padding: 0.5rem 1rem; }
     select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 6px; }
-    #map, #windyContainer { width: 100%; height: 75vh; }
-    #windyContainer { display: none; text-align: center; }
-    iframe { width: 95%; height: 75vh; border: none; border-radius: 8px; }
+    #map, #windyContainer, #panel-slideshow-viewer { 
+      width: 100%; 
+      height: 75vh; 
+      display: none; 
+    }
+    #windyContainer, #panel-slideshow-viewer { 
+      text-align: center; 
+    }
+    #map {
+      display: block;
+    }
+    iframe { 
+      width: 95%; 
+      height: 75vh; 
+      border: none; 
+      border-radius: 8px; 
+    }
     .update-box { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 6px 12px; border-radius: 8px; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000; }
+    
+    /* Estilos para el panel de visualización NDVI */
+    .ndvi-controls { 
+      padding: 1rem; 
+      background: rgba(255,255,255,0.9);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1rem;
+    }
+    .control-btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #f0f0f0;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .control-btn:hover { background: #e0e0e0; }
+    .slider {
+      width: 50%;
+      max-width: 500px;
+    }
+    .image-container {
+      height: calc(75vh - 60px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #f5f5f5;
+      padding: 1rem;
+      position: relative;
+    }
+    #ndviImage {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: white;
+    }
+    #loadingIndicator {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(255, 255, 255, 0.9);
+      padding: 1rem;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 0.9em;
+    }
+    .legend .gradient {
+      width: 100px;
+      height: 10px;
+      background: linear-gradient(to right, 
+        #543005, #8c510a, #bf812d, #dfc27d, 
+        #f6e8c3, #c7eae5, #80cdc1, #35978f, 
+        #01665e, #003c30, #0a6e1c
+      );
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
@@ -45,6 +132,7 @@
     <option value="floracion">🌸 Floración</option>
     <option value="plagas">🐛 Plagas</option>
     <option value="clima">🌦️ Clima (Windy)</option>
+    <option value="vegetacion">🌿 Vegetación</option>
   </select>
 
   <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
@@ -62,7 +150,33 @@
   </select>
 </div>
 
+<!-- Timeline controls -->
+<div id="timeline" style="text-align:center; padding:0.5rem 1rem; background:rgba(255,255,255,0.9);">
+  <button id="playBtn" style="padding:6px 10px; margin-right:8px;">▶️</button>
+  <input type="range" id="timeRange" min="0" max="11" value="11" style="width:50%; vertical-align:middle;">
+  <span id="timeLabel" style="margin-left:8px; font-weight:600;"></span>
+</div>
+
 <div id="map"></div>
+
+<!-- Panel de visualización NDVI -->
+<div id="panel-slideshow-viewer">
+  <div class="ndvi-controls">
+    <button id="ndviPlayBtn" class="control-btn">▶️</button>
+    <input type="range" id="ndviSlider" min="2000" max="2025" value="2025" class="slider">
+    <span id="yearDisplay">2025</span>
+  </div>
+  <div class="image-container">
+    <img id="ndviImage" src="https://eoimages.gsfc.nasa.gov/images/imagerecords/74000/74218/MOD_NDVI_M_2025_12.png" alt="Índice de Vegetación Global (NDVI)">
+    <div id="loadingIndicator" style="display: none;">Cargando datos de vegetación...</div>
+    <div class="legend">
+      <span style="color: #543005">Baja vegetación</span>
+      <div class="gradient"></div>
+      <span style="color: #0a6e1c">Alta vegetación</span>
+    </div>
+  </div>
+</div>
+
 <div id="windyContainer">
   <iframe id="windyFrame" title="Windy embed"></iframe>
 </div>
@@ -89,125 +203,277 @@
   const capaPlagas = L.markerClusterGroup();
   const capaZonas = L.layerGroup().addTo(map); // Para resaltar regiones
 
-  // === FUNCIÓN DE COLOR ===
-  function colorFloracion(p) {
-    return p > 80 ? '#2ecc71' :
-           p > 50 ? '#f1c40f' :
-           p > 20 ? '#e67e22' : '#e74c3c';
+  // === TIMELINE (últimos 12 meses) ===
+  const MONTHS = 12;
+  const now = new Date();
+  const timeSteps = [];
+  for (let i = MONTHS - 1; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    timeSteps.push(d);
   }
 
-  let floracionDatos = [];
+  // cache de datos por paso temporal
+  const floracionCache = {}; // index -> array of {lat,lon,p}
+  let plagasData = []; // {lat, lon, plaga, cultivo, fecha: Date}
 
-  // === GENERAR FLORACIÓN GLOBAL ===
-  function generarFloracion() {
-    capaFloracion.clearLayers();
-    floracionDatos = [];
-
-    for (let lat = -80; lat <= 80; lat += 5) {
-      for (let lon = -180; lon <= 180; lon += 5) {
-        // Floración simulada según latitud + ruido aleatorio
-        const base = Math.max(0, 100 - Math.abs(lat));
-        const p = Math.min(100, Math.max(0, base + (Math.random() * 30 - 15)));
-        floracionDatos.push({ lat, lon, p });
-
-        const color = colorFloracion(p);
-        const marker = L.circleMarker([lat, lon], {
-          radius: 5, fillColor: color, color: '#333',
-          weight: 1, opacity: 1, fillOpacity: 0.8
-        }).bindPopup(`<b>Floración estimada:</b> ${p.toFixed(1)}%<br><b>Lat:</b> ${lat}, <b>Lon:</b> ${lon}`);
-        capaFloracion.addLayer(marker);
-      }
-    }
-  }
-
-  // === FILTRAR FLORACIÓN ===
-  function filtrarFloracion() {
-    const filtro = document.getElementById("filtroFloracion").value;
-    capaZonas.clearLayers();
-
-    if (filtro === "alta" || filtro === "baja") {
-      const color = filtro === "alta" ? "#2ecc71" : "#e74c3c";
-      const texto = filtro === "alta" ? "Alta floración" : "Baja floración";
-
-      const seleccionadas = floracionDatos.filter(d =>
-        filtro === "alta" ? d.p > 75 : d.p < 25
-      );
-
-      seleccionadas.forEach(d => {
-        const circle = L.circle([d.lat, d.lon], {
-          radius: 200000, // A escala global
-          color,
-          fillColor: color,
-          fillOpacity: 0.25
-        }).bindPopup(`${texto}: ${d.p.toFixed(1)}%`);
-        capaZonas.addLayer(circle);
-      });
-    }
-  }
-
-  // === PLAGAS (simuladas) ===
-  function generarPlagas() {
-    capaPlagas.clearLayers();
-    for (let i = 0; i < 120; i++) {
+  // generar plagas con fecha aleatoria en el último año
+  (function generarPlagasHistoricas() {
+    plagasData = [];
+    for (let i = 0; i < 200; i++) {
       const lat = (Math.random() * 160) - 80;
       const lon = (Math.random() * 360) - 180;
       const plagas = ["Pulgón verde", "Mosca blanca", "Oruga", "Langosta", "Trips", "Escarabajo"];
       const cultivos = ["Trigo", "Maíz", "Cítricos", "Soja", "Algodón", "Papa"];
       const plaga = plagas[Math.floor(Math.random() * plagas.length)];
       const cultivo = cultivos[Math.floor(Math.random() * cultivos.length)];
-      const fecha = new Date().toISOString().split('T')[0];
-      const marker = L.circleMarker([lat, lon], {
-        radius: 7, fillColor: "red", color: "#800",
-        weight: 1, opacity: 1, fillOpacity: 0.8
-      }).bindPopup(`<b>Plaga:</b> ${plaga}<br><b>Cultivo:</b> ${cultivo}<br><b>Fecha:</b> ${fecha}`);
-      capaPlagas.addLayer(marker);
+      // fecha aleatoria en el rango de timeSteps
+      const offset = Math.floor(Math.random() * MONTHS);
+      const fecha = new Date(timeSteps[offset].getFullYear(), timeSteps[offset].getMonth(), 1 + Math.floor(Math.random() * 27));
+      plagasData.push({ lat, lon, plaga, cultivo, fecha });
     }
+  })();
+
+  function colorFloracion(p) {
+    return p > 80 ? '#2ecc71' :
+           p > 50 ? '#f1c40f' :
+           p > 20 ? '#e67e22' : '#e74c3c';
   }
 
-  // === ACTUALIZACIÓN ===
-  function actualizarDatos() {
-    generarFloracion();
-    generarPlagas();
-    filtrarFloracion();
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
-  }
-
-  actualizarDatos();
-  capaFloracion.addTo(map);
-  setInterval(actualizarDatos, 60000);
-
-  // === CAMBIO DE MAPA ===
-  function cambiarMapa() {
-    const tipo = document.getElementById('mapSelect').value;
-    const mapDiv = document.getElementById('map');
-    const windyDiv = document.getElementById('windyContainer');
-    const layerSelect = document.getElementById('layerSelect');
-
-    if (tipo === "clima") {
-      mapDiv.style.display = "none";
-      windyDiv.style.display = "block";
-      layerSelect.style.display = "inline-block";
-      cambiarCapaClima();
-    } else {
-      mapDiv.style.display = "block";
-      windyDiv.style.display = "none";
-      layerSelect.style.display = "none";
-      if (tipo === "floracion") {
-        map.addLayer(capaFloracion);
-        map.removeLayer(capaPlagas);
-      } else if (tipo === "plagas") {
-        map.addLayer(capaPlagas);
-        map.removeLayer(capaFloracion);
+  // genera (y cachea) datos de floración para un paso temporal dado (index)
+  function getFloracionForStep(index) {
+    if (floracionCache[index]) return floracionCache[index];
+    const data = [];
+    // uso paso de 10 grados para rendimiento
+    for (let lat = -80; lat <= 80; lat += 10) {
+      for (let lon = -180; lon <= 180; lon += 10) {
+        // variación temporal: oscila con el índice
+        const seasonal = 20 * Math.sin((index / MONTHS) * Math.PI * 2 + (lat / 90));
+        const base = Math.max(0, 100 - Math.abs(lat));
+        const noise = (Math.random() * 20 - 10);
+        const p = Math.min(100, Math.max(0, base + seasonal + noise));
+        data.push({ lat, lon, p });
       }
-      setTimeout(() => map.invalidateSize(), 200);
     }
+    floracionCache[index] = data;
+    return data;
   }
+
+  // renderizar floración y plagas para un paso
+  function renderStep(index) {
+    capaFloracion.clearLayers();
+    capaPlagas.clearLayers();
+    capaZonas.clearLayers();
+
+    const data = getFloracionForStep(index);
+    data.forEach(d => {
+      const color = colorFloracion(d.p);
+      const marker = L.circleMarker([d.lat, d.lon], {
+        radius: 5, fillColor: color, color: '#333', weight: 1, opacity: 1, fillOpacity: 0.8
+      }).bindPopup(`<b>Floración estimada:</b> ${d.p.toFixed(1)}%<br><b>Lat:</b> ${d.lat}, <b>Lon:</b> ${d.lon}`);
+      capaFloracion.addLayer(marker);
+    });
+
+    // mostrar plagas cuyo mes/año coincida con el paso
+    const stepDate = timeSteps[index];
+    plagasData.filter(p => p.fecha.getFullYear() === stepDate.getFullYear() && p.fecha.getMonth() === stepDate.getMonth())
+      .forEach(p => {
+        const marker = L.circleMarker([p.lat, p.lon], { radius: 7, fillColor: 'red', color: '#800', weight:1, opacity:1, fillOpacity:0.9 })
+          .bindPopup(`<b>Plaga:</b> ${p.plaga}<br><b>Cultivo:</b> ${p.cultivo}<br><b>Fecha:</b> ${p.fecha.toISOString().split('T')[0]}`);
+        capaPlagas.addLayer(marker);
+      });
+
+    // aplicar filtro de floración (resaltar zonas) si corresponde
+    filtrarFloracion();
+
+    // añadir capas si no están
+    if (!map.hasLayer(capaFloracion)) map.addLayer(capaFloracion);
+    if (!map.hasLayer(capaPlagas)) map.addLayer(capaPlagas);
+  }
+
+  // filtrar floración en la capaZonas usando los datos actualmente renderizados
+  function filtrarFloracion() {
+    const filtro = document.getElementById("filtroFloracion").value;
+    capaZonas.clearLayers();
+    if (filtro === "todas") return;
+    // tomamos los markers actuales en capaFloracion (iterable)
+    capaFloracion.eachLayer(m => {
+      // extraemos porcentaje desde el popup content (no ideal pero suficiente)
+      const popup = m.getPopup && m.getPopup();
+      if (!popup) return;
+      const txt = popup.getContent();
+      const match = txt.match(/([0-9]+\.[0-9]+|[0-9]+)%/);
+      if (!match) return;
+      const p = parseFloat(match[1]);
+      const meets = filtro === 'alta' ? p > 75 : p < 25;
+      if (meets) {
+        const circle = L.circle(m.getLatLng(), { radius: 200000, color: filtro === 'alta' ? '#2ecc71' : '#e74c3c', fillColor: filtro === 'alta' ? '#2ecc71' : '#e74c3c', fillOpacity: 0.25 });
+        capaZonas.addLayer(circle);
+      }
+    });
+  }
+
+  // timeline UI
+  const timeRange = document.getElementById('timeRange');
+  const timeLabel = document.getElementById('timeLabel');
+  const playBtn = document.getElementById('playBtn');
+  let playInterval = null;
+
+  function updateTimeLabel(index) {
+    const d = timeSteps[index];
+    const fmt = d.toLocaleString('es-ES', { year: 'numeric', month: 'short' });
+    timeLabel.textContent = fmt;
+  }
+
+  // inicializar control
+  timeRange.max = timeSteps.length - 1;
+  timeRange.value = timeSteps.length - 1; // mostrar más reciente
+  updateTimeLabel(timeRange.value);
+
+  timeRange.addEventListener('input', e => {
+    const idx = parseInt(e.target.value, 10);
+    renderStep(idx);
+    updateTimeLabel(idx);
+  });
+
+  playBtn.addEventListener('click', () => {
+    if (playInterval) {
+      clearInterval(playInterval); playInterval = null; playBtn.textContent = '▶️';
+    } else {
+      playBtn.textContent = '⏸️';
+      playInterval = setInterval(() => {
+        let idx = parseInt(timeRange.value, 10);
+        idx = Math.min(timeSteps.length - 1, idx + 1);
+        timeRange.value = idx;
+        updateTimeLabel(idx);
+        renderStep(idx);
+        if (idx === timeSteps.length - 1) { clearInterval(playInterval); playInterval = null; playBtn.textContent = '▶️'; }
+      }, 800);
+    }
+  });
+
+  // Inicializar: renderizar el paso más reciente
+  renderStep(timeSteps.length - 1);
+
+  // actualizar datos cada minuto (solo regenerará si cambias manualmente)
+  setInterval(() => {
+    // limpieza de cache pequeña para permitir variación en regeneraciones
+    for (const k in floracionCache) delete floracionCache[k];
+    renderStep(parseInt(timeRange.value, 10));
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  }, 60000);
 
   // === CLIMA (WINDY) ===
   function cambiarCapaClima() {
     const overlay = document.getElementById('layerSelect').value || 'temp';
     const iframe = document.getElementById('windyFrame');
     iframe.src = `https://embed.windy.com/embed2.html?lat=0&lon=0&zoom=2&level=surface&overlay=${overlay}&menu=true&message=true&calendar=now&pressure=true&type=map&location=coordinates`;
+  }
+
+  // mantener comportamiento previo para selector
+  function cambiarMapa() {
+    const tipo = document.getElementById('mapSelect').value;
+    const mapDiv = document.getElementById('map');
+    const windyDiv = document.getElementById('windyContainer');
+    const ndviDiv = document.getElementById('panel-slideshow-viewer');
+    const layerSelect = document.getElementById('layerSelect');
+
+    // Ocultar todos los elementos
+    [mapDiv, windyDiv, ndviDiv].forEach(div => div.style.display = "none");
+    layerSelect.style.display = "none";
+
+    // Mostrar el panel correspondiente según la selección
+    switch(tipo) {
+      case "clima":
+        windyDiv.style.display = "block";
+        layerSelect.style.display = "inline-block";
+        cambiarCapaClima();
+        break;
+      case "vegetacion":
+        ndviDiv.style.display = "block";
+        if (!window.ndviInitialized) {
+          initNDVIControls();
+        }
+        break;
+      default:
+        mapDiv.style.display = "block";
+        if (tipo === "floracion") {
+          if (!map.hasLayer(capaFloracion)) map.addLayer(capaFloracion);
+          map.removeLayer(capaPlagas);
+        } else if (tipo === "plagas") {
+          if (!map.hasLayer(capaPlagas)) map.addLayer(capaPlagas);
+          map.removeLayer(capaFloracion);
+        }
+        setTimeout(() => map.invalidateSize(), 200);
+    }
+  }
+
+  // === NDVI VIEWER ===
+  let ndviPlayInterval = null;
+
+  function initNDVIControls() {
+    const playBtn = document.getElementById('ndviPlayBtn');
+    const slider = document.getElementById('ndviSlider');
+    const yearDisplay = document.getElementById('yearDisplay');
+    const ndviImage = document.getElementById('ndviImage');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+
+    // Mostrar indicador de carga mientras se carga la imagen
+    ndviImage.onloadstart = function() {
+      loadingIndicator.style.display = 'block';
+    };
+
+    // Ocultar indicador cuando la imagen se carga
+    ndviImage.onload = function() {
+      loadingIndicator.style.display = 'none';
+    };
+
+    function updateNDVIImage(year) {
+      yearDisplay.textContent = year;
+      
+      // Usando la URL de Earth Observatory que muestra el NDVI global
+      const imageUrl = `https://eoimages.gsfc.nasa.gov/images/imagerecords/74000/74218/MOD_NDVI_M_${year}_12.png`;
+      
+      // Manejar errores de carga de imagen
+      ndviImage.onerror = function() {
+        console.error('Error cargando imagen NDVI');
+        // Si falla la imagen de diciembre, intentar con enero
+        this.src = `https://eoimages.gsfc.nasa.gov/images/imagerecords/74000/74218/MOD_NDVI_M_${year}_01.png`;
+      };
+      
+      ndviImage.src = imageUrl;
+    }
+
+    slider.addEventListener('input', (e) => {
+      const year = e.target.value;
+      updateNDVIImage(year);
+    });
+
+    playBtn.addEventListener('click', () => {
+      if (ndviPlayInterval) {
+        clearInterval(ndviPlayInterval);
+        ndviPlayInterval = null;
+        playBtn.textContent = '▶️';
+      } else {
+        playBtn.textContent = '⏸️';
+        ndviPlayInterval = setInterval(() => {
+          let year = parseInt(slider.value);
+          if (year >= 2025) {
+            year = 2000;
+          } else {
+            year++;
+          }
+          slider.value = year;
+          updateNDVIImage(year);
+          if (year === 2025) {
+            clearInterval(ndviPlayInterval);
+            ndviPlayInterval = null;
+            playBtn.textContent = '▶️';
+          }
+        }, 1000);
+      }
+    });
+
+    window.ndviInitialized = true;
   }
 
   // Inicializar vista correcta según selector
