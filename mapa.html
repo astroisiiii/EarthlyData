@@ -69,6 +69,7 @@
   <nav>
     <a href="index.html">Inicio</a>
     <a href="mapa.html">Mapa</a>
+    <a href="mapa-plagas.html">Mapa Plagas</a>
     <a href="#impacto">Información</a>
     <a href="#perfil">Perfil</a>
   </nav>
@@ -78,7 +79,6 @@
   <label for="mapSelect"><b>Selecciona mapa:</b></label>
   <select id="mapSelect" onchange="cambiarMapa()">
     <option value="floracion">🌸 Floración</option>
-    <option value="plagas">🐛 Plagas</option>
     <option value="clima">🌦️ Clima (Windy)</option>
   </select>
 
@@ -135,7 +135,6 @@
 
   // === CAPAS ===
   const capaFloracion = L.markerClusterGroup();
-  const capaPlagas = L.markerClusterGroup();
   const capaZonas = L.layerGroup().addTo(map);
   let marcadorUsuario = null;
 
@@ -203,26 +202,10 @@
     }
   }
 
-  // === GENERAR PLAGAS ===
-  let plagas = [];
-  function generarPlagas() {
-    capaPlagas.clearLayers();
-    plagas = [];
-    for (let i = 0; i < 100; i++) {
-      const lat = (Math.random() * 160) - 80;
-      const lon = (Math.random() * 360) - 180;
-      const plaga = ["Pulgón", "Mosca blanca", "Langosta"][Math.floor(Math.random() * 3)];
-      const marker = L.circleMarker([lat, lon], {
-        radius: 6, fillColor: "red", color: "#800", weight: 1, fillOpacity: 0.8
-      }).bindPopup(`⚠️ <b>Plaga detectada:</b> ${plaga}`);
-      capaPlagas.addLayer(marker);
-      plagas.push({ lat, lon, plaga });
-    }
-  }
+
 
   generarDatosHistoricos();
   generarFloracion();
-  generarPlagas();
   map.addLayer(capaFloracion);
 
   // === FILTRO FLORACIÓN ===
@@ -270,12 +253,7 @@
       
       if (tipo === "floracion") {
         map.addLayer(capaFloracion);
-        map.removeLayer(capaPlagas);
         timeline.style.display = "block";
-      } else if (tipo === "plagas") {
-        map.addLayer(capaPlagas);
-        map.removeLayer(capaFloracion);
-        timeline.style.display = "none";
       }
       setTimeout(() => map.invalidateSize(), 200);
     }
@@ -329,6 +307,8 @@
       <b>Precisión:</b> ±${Math.round(accuracy)}m
     `;
     panel.style.display = 'block';
+    
+
     
     // Centrar mapa
     map.setView([latitude, longitude], 8);

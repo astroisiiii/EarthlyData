@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>EarthlyData — Floración (NDVI), Plagas reales (GBIF) y Clima (OpenWeather)</title>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+
+  <style>
+    :root{--accent:#f9a825}
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,Helvetica,sans-serif}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:linear-gradient(90deg,#fdd835,#fbc02d);color:#3e2723}
+    header h1{font-size:1.05rem;margin:0}
+    #controls{padding:10px;text-align:center;background:#fff}
+    select,button{padding:8px 10px;border-radius:8px;border:1px solid #ddd;margin:0 6px}
+    #map{height:78vh;width:100%}
+    .info{position:absolute;right:14px;top:86px;background:rgba(255,255,255,0.96);padding:10px;border-radius:10px;z-index:1000;box-shadow:0 4px 14px rgba(0,0,0,0.12);font-size:13px}
+    #btnCenter{position:absolute;right:14px;bottom:18px;z-index:1000;padding:10px;border-radius:8px;border:none;background:var(--accent);cursor:pointer}
+    #legend{position:absolute;left:14px;top:86px;background:rgba(255,255,255,0.96);padding:10px;border-radius:10px;z-index:1000;box-shadow:0 4px 14px rgba(0,0,0,0.12);font-size:13px}
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>EarthlyData — Floración (NDVI) · Plagas reales · Clima</h1>
+  <div style="font-size:13px;color:#4e342e">GBIF · NASA GIBS · OpenWeather</div>
+</header>
+
+<div id="controls">
+  <label>Vista:
+    <select id="modeSelect">
+      <option value="plagas">🐛 Plagas (GBIF)</option>
+    </select>
+  </label>
+
+
+
+  <button id="reloadBtn">🔄 Recargar plagas</button>
+  
+
+</div>
+
+<div id="map"></div>
+
+
+<div id="legend" aria-hidden="true">
+  <b>Leyenda</b><br>
+  <span style="display:inline-block;width:12px;height:12px;background:#e74c3c;border:1px solid #800;margin-right:6px;"></span> Plaga (GBIF)<br>
+  <span style="display:inline-block;width:12px;height:12px;background:#2ecc71;border:1px solid #0a5;margin-right:6px;"></span> NDVI alto (visual)<br>
+</div>
+<div class="info" id="infoBox">Cargando...</div>
+<button id="btnCenter" title="Centrar en mi ubicación">📍 Mi ubicación</button>
+
+<script>
+/* ============================
+   CONFIG: API key OpenWeather
+   ============================ */
+const OPENWEATHER_API_KEY = '93f92ad22b611a9c6f3388d625d5593f';
+
+/* ============================
+   Inicializar mapa
+   ============================ */
+const map = L.map('map').setView([0, 0], 2);
+const baseOSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap' }).addTo(map);
+const baseSat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution:'Esri' });
+
+/* ================
+   Capas de datos
+   ================ */
+const capaPlagas = L.layerGroup();
+
+
+
+/* Control de capas base */
+L.control.layers({ 'Mapa': baseOSM, 'Satélite': baseSat }, null, { collapsed: false }).addTo(map);
+
+/* ============================
+   Variables & utilidades
+   ============================ */
+const infoBox = document.getElementById('infoBox');
+const modeSelect = document.getElementById('modeSelect');
+const climaLabel = document.getElementById('climaLabel');
+const climaLayerSelect = document.getElementById('climaLayerSelect');
+const reloadBtn = document.getElementById('reloadBtn');
+const btnCenter = document.getElementById('btnCenter');
+
+let userMarker = null;
+let userCoords = null;
+let plagasGBIF = [];
+
+/* Haversine distancia en km */
+function distanciaKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI/180;
+  const dLon = (lon2 - lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)*2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)*2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+/* ============================
+   PLAGAS: obtener datos reales desde GBIF
+   ============================ */
+
+const SPECIES_LIST = [
+  'Spodoptera frugiperda',
+  'Tuta absoluta',
+  'Helicoverpa armigera',
+  'Aphis gossypii',
+  'Bemisia tabaci'
+];
+
+async function cargarPlagasGBIF() {
+  capaPlagas.clearLayers();
+  plagasGBIF = [];
+  infoBox.textContent = '🔎 Descargando ocurrencias GBIF para especies plaga...';
+
+  try {
+    for (const scientificName of SPECIES_LIST) {
+      const q = encodeURIComponent(scientificName);
+      const url = `https://api.gbif.org/v1/occurrence/search?scientificName=${q}&has_coordinate=true&limit=200`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.warn('GBIF fetch failed for', scientificName, res.status);
+        continue;
+      }
+      const json = await res.json();
+      const results = json.results || [];
+      for (const r of results) {
+        const lat = r.decimalLatitude;
+        const lon = r.decimalLongitude;
+        if (typeof lat !== 'number' || typeof lon !== 'number') continue;
+        const especie = r.species || r.scientificName || scientificName;
+        const fecha = r.eventDate || r.year || '';
+        const m = L.circleMarker([lat, lon], {
+          radius: 5,
+          fillColor: '#e74c3c',
+          color: '#800',
+          weight: 1,
+          fillOpacity: 0.9
+        }).bindPopup(`<b>🪲 ${especie}</b><br>Fecha: ${fecha}<br>Fuente: GBIF`);
+        m.addTo(capaPlagas);
+        plagasGBIF.push({ lat, lon, especie, fecha });
+      }
+    }
+    infoBox.textContent = `🐛 Plagas cargadas: ${plagasGBIF.length} puntos (GBIF)`;
+  } catch (err) {
+    console.error('Error cargando GBIF', err);
+    infoBox.textContent = '⚠️ Error al obtener datos GBIF';
+  }
+}
+
+
+
+/* ----------------------------
+   Geolocalización y clima local
+   ---------------------------- */
+async function obtenerClimaLocalYMostrar(lat, lon) {
+  if (!OPENWEATHER_API_KEY) {
+    infoBox.textContent = '📍 Ubicación detectada — agrega tu OpenWeather API key para ver clima local.';
+    return;
+  }
+  try {
+    const onecallUrl = `https://api.openweathermap.org/data/2.5/onecall?lat=${lat}&lon=${lon}&exclude=minutely,hourly,daily,alerts&units=metric&appid=${OPENWEATHER_API_KEY}`;
+    const r = await fetch(onecallUrl);
+    if (!r.ok) throw new Error('OpenWeather error ' + r.status);
+    const j = await r.json();
+    const temp = j.current?.temp;
+    const hum = j.current?.humidity;
+    const uvi = j.current?.uvi ?? '—';
+    const desc = j.current?.weather?.[0]?.description || '';
+    infoBox.innerHTML = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)} · 🌡 ${temp}°C · 💧 ${hum}% · ☀️ UVI: ${uvi} <br>${desc}`;
+  } catch (err) {
+    console.warn('OpenWeather onecall error', err);
+    infoBox.textContent = '📍 Ubicación detectada — no se pudo obtener clima local.';
+  }
+}
+
+function centrarEnUsuario() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  navigator.geolocation.getCurrentPosition(pos => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    userCoords = { lat, lon };
+    if (!userMarker) userMarker = L.marker([lat, lon]).addTo(map).bindPopup('📍 Tú').openPopup();
+    else userMarker.setLatLng([lat, lon]);
+    map.setView([lat, lon], 6);
+    obtenerClimaLocalYMostrar(lat, lon);
+    revisarPlagasCercanas(lat, lon);
+  }, err => {
+    alert('No se pudo obtener la ubicación: ' + (err.message || err.code));
+  }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
+}
+
+function revisarPlagasCercanas(lat, lon) {
+  if (!plagasGBIF || !plagasGBIF.length) return;
+  if (Notification.permission !== 'granted') Notification.requestPermission();
+  let found = 0;
+  for (const p of plagasGBIF) {
+    const d = distanciaKm(lat, lon, p.lat, p.lon);
+    if (d <= 50) {
+      found++;
+      if (Notification.permission === 'granted') {
+        new Notification('⚠️ Plaga cercana', { body: `${p.especie || 'Plaga'} a ${d.toFixed(1)} km`, icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' });
+      }
+    }
+  }
+  if (found) infoBox.innerHTML += `<br>⚠️ ${found} plaga(s) detectada(s) a <50 km`;
+}
+
+/* ============================
+   UI & flujo
+   ============================ */
+// Mostrar plagas por defecto
+map.addLayer(capaPlagas);
+infoBox.textContent = `🐛 Plagas (GBIF): ${plagasGBIF.length} puntos`;
+
+
+reloadBtn.addEventListener('click', async () => {
+  infoBox.textContent = '🔄 Recargando datos GBIF...';
+  await cargarPlagasGBIF();
+  if (modeSelect.value === 'plagas') map.addLayer(capaPlagas);
+});
+btnCenter.addEventListener('click', centrarEnUsuario);
+
+/* ============================
+   Inicialización principal
+   ============================ */
+
+
+(async function init(){
+  infoBox.textContent = 'Iniciando — cargando plagas...';
+  await cargarPlagasGBIF();
+  map.addLayer(capaPlagas);
+  infoBox.textContent = 'Listo. Pulsa "Mi ubicación" para centrar y recibir alertas de plagas cercanas.';
+})();
+</script>
+</body>
+</html>
