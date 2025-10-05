@@ -257,7 +257,7 @@
   const map = L.map('map').setView([10, 0], 2);
   const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
   const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
-  L.control.layers({ "🗺️ Mapa": osm, "🛰️ Satélite": satelite }).addTo(map);
+  L.control.layers({ "🗺️ Map": osm, "🛰️ Satellite": satelite }).addTo(map);
 
   // === CAPAS ===
   const capaFloracion = L.markerClusterGroup();
@@ -279,7 +279,7 @@
     { mes: 'September', año: 2025, indice: 8 },
     { mes: 'October', año: 2025, indice: 9 }
   ];
-  const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const meses = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   let periodoActual = 0;
   let reproduciendo = false;
   let intervalId = null;
@@ -501,7 +501,7 @@
         maximumAge: 300000
       });
     } else {
-      alert('Tu navegador no soporta geolocalización.');
+      alert('Your browser does not support geolocation.');
     }
   }
 
