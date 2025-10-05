@@ -13,8 +13,16 @@
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
 
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f0f0f0; }
-    header { background: #2c3e50; color: white; padding: 12px 20px; text-align: center; }
+    body { margin: 0; font-family: 'Poppins', sans-serif; background: linear-gradient(180deg, #fffde7 0%, #fff8e1 100%); color: #5a4a00; }
+    header {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 1.5rem 3rem; background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(10px); position: sticky; top: 0;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    header h1 { font-size: 1.8rem; color: #f9a825; font-weight: 700; }
+    nav a { margin-left: 2rem; text-decoration: none; color: #f57f17; font-weight: 500; transition: color 0.3s; }
+    nav a:hover { color: #fbc02d; }
     #selector { text-align: center; margin: 10px 0; }
     select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 5px; }
     #map, #windyContainer { width: 100%; height: 85vh; }
@@ -30,7 +38,13 @@
 <body>
 
 <header>
-  <h2>🌍 Mapas Globales: Floración, Plagas y Clima (con Monitoreo UV)</h2>
+  <h1>EarthlyData</h1>
+  <nav>
+    <a href="index.html">Inicio</a>
+    <a href="mapa.html">Mapa</a>
+      <a href="#impacto">Información</a>
+    <a href="#impacto">Perfil</a>
+  </nav>
 </header>
 
 <div id="selector">
