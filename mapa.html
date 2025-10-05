@@ -114,15 +114,15 @@
 <div id="timeline">
   <h3>📅 Línea de Tiempo - Floración</h3>
   <div id="timeInfo">
-    <span id="currentDate">Enero 2024</span>
+    <span id="currentDate">Noviembre 2024</span>
     <span>
       <button id="playBtn">▶️ Reproducir</button>
     </span>
   </div>
   <input type="range" id="timeSlider" min="0" max="11" value="0" step="1">
   <div style="display: flex; justify-content: space-between; font-size: 12px; margin-top: 5px;">
-    <span>Ene 2024</span>
-    <span>Dic 2024</span>
+    <span>Nov 2024</span>
+    <span>Oct 2025</span>
   </div>
 </div>
 
@@ -140,8 +140,22 @@
   let marcadorUsuario = null;
 
   // === LÍNEA DE TIEMPO ===
+  const periodoCompleto = [
+    { mes: 'Noviembre', año: 2024, indice: 10 },
+    { mes: 'Diciembre', año: 2024, indice: 11 },
+    { mes: 'Enero', año: 2025, indice: 0 },
+    { mes: 'Febrero', año: 2025, indice: 1 },
+    { mes: 'Marzo', año: 2025, indice: 2 },
+    { mes: 'Abril', año: 2025, indice: 3 },
+    { mes: 'Mayo', año: 2025, indice: 4 },
+    { mes: 'Junio', año: 2025, indice: 5 },
+    { mes: 'Julio', año: 2025, indice: 6 },
+    { mes: 'Agosto', año: 2025, indice: 7 },
+    { mes: 'Septiembre', año: 2025, indice: 8 },
+    { mes: 'Octubre', año: 2025, indice: 9 }
+  ];
   const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-  let mesActual = 0;
+  let periodoActual = 0;
   let reproduciendo = false;
   let intervalId = null;
   let datosHistoricos = [];
@@ -149,14 +163,17 @@
   // === GENERAR DATOS HISTÓRICOS ===
   function generarDatosHistoricos() {
     datosHistoricos = [];
-    for (let mes = 0; mes < 12; mes++) {
+    for (let i = 0; i < periodoCompleto.length; i++) {
+      const periodo = periodoCompleto[i];
       const datosMes = [];
       for (let lat = -80; lat <= 80; lat += 5) {
         for (let lon = -180; lon <= 180; lon += 5) {
           const base = Math.max(0, 100 - Math.abs(lat));
-          const variacionEstacional = Math.sin((mes / 12) * Math.PI * 2) * 20;
-          const variacionLatitud = lat > 0 ? Math.cos((mes / 12) * Math.PI * 2) * 15 : Math.sin((mes / 12) * Math.PI * 2) * 15;
-          const p = Math.min(100, Math.max(0, base + variacionEstacional + variacionLatitud + (Math.random() * 20 - 10)));
+          const variacionEstacional = Math.sin((periodo.indice / 12) * Math.PI * 2) * 20;
+          const variacionLatitud = lat > 0 ? Math.cos((periodo.indice / 12) * Math.PI * 2) * 15 : Math.sin((periodo.indice / 12) * Math.PI * 2) * 15;
+          // Agregar tendencia temporal (ligero aumento con el tiempo)
+          const tendenciaTemporal = i * 2;
+          const p = Math.min(100, Math.max(0, base + variacionEstacional + variacionLatitud + tendenciaTemporal + (Math.random() * 20 - 10)));
           datosMes.push({ lat, lon, valor: p });
         }
       }
@@ -165,26 +182,29 @@
   }
 
   // === GENERAR FLORACIÓN GLOBAL ===
-  function generarFloracion(mes = mesActual) {
+  function generarFloracion(indice = periodoActual) {
     capaFloracion.clearLayers();
     if (datosHistoricos.length === 0) generarDatosHistoricos();
     
-    const datos = datosHistoricos[mes] || datosHistoricos[0];
+    const datos = datosHistoricos[indice] || datosHistoricos[0];
+    const periodo = periodoCompleto[indice] || periodoCompleto[0];
+    
     datos.forEach(punto => {
       const color = punto.valor > 80 ? '#2ecc71' : punto.valor > 50 ? '#f1c40f' : punto.valor > 20 ? '#e67e22' : '#e74c3c';
       const marker = L.circleMarker([punto.lat, punto.lon], {
         radius: 5, fillColor: color, color: '#333',
         weight: 1, opacity: 1, fillOpacity: 0.8
-      }).bindPopup(`<b>Floración:</b> ${punto.valor.toFixed(1)}%<br><b>Mes:</b> ${meses[mes]} 2024`);
+      }).bindPopup(`<b>Floración:</b> ${punto.valor.toFixed(1)}%<br><b>Período:</b> ${periodo.mes} ${periodo.año}`);
       capaFloracion.addLayer(marker);
     });
   }
 
   // === FUNCIONES LÍNEA DE TIEMPO ===
-  function actualizarMapa(mes) {
-    mesActual = mes;
-    generarFloracion(mes);
-    document.getElementById('currentDate').textContent = `${meses[mes]} 2024`;
+  function actualizarMapa(indice) {
+    periodoActual = indice;
+    generarFloracion(indice);
+    const periodo = periodoCompleto[indice];
+    document.getElementById('currentDate').textContent = `${periodo.mes} ${periodo.año}`;
   }
 
   function reproducirTimeline() {
@@ -196,9 +216,9 @@
       reproduciendo = true;
       document.getElementById('playBtn').textContent = '⏸️ Pausar';
       intervalId = setInterval(() => {
-        mesActual = (mesActual + 1) % 12;
-        document.getElementById('timeSlider').value = mesActual;
-        actualizarMapa(mesActual);
+        periodoActual = (periodoActual + 1) % periodoCompleto.length;
+        document.getElementById('timeSlider').value = periodoActual;
+        actualizarMapa(periodoActual);
       }, 800);
     }
   }
@@ -401,6 +421,25 @@
 
   // === INICIALIZAR ===
   document.addEventListener('DOMContentLoaded', () => {
+    // Establecer fecha actual (octubre 2025 = índice 11)
+    const fechaActual = new Date();
+    const mesActualReal = fechaActual.getMonth();
+    const añoActual = fechaActual.getFullYear();
+    
+    // Encontrar el índice correspondiente al mes actual
+    let indiceInicial = 11; // Por defecto octubre 2025
+    for (let i = 0; i < periodoCompleto.length; i++) {
+      const periodo = periodoCompleto[i];
+      if (periodo.año === añoActual && periodo.indice === mesActualReal) {
+        indiceInicial = i;
+        break;
+      }
+    }
+    
+    periodoActual = indiceInicial;
+    document.getElementById('timeSlider').value = indiceInicial;
+    actualizarMapa(indiceInicial);
+    
     cambiarMapa();
     document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
     
