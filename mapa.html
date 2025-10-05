@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa Global - Floración, Plagas y Clima con UV</title>
+  <title>EarthlyData 🌍 Mapa Global</title>
 
   <!-- Leaflet y MarkerCluster -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -21,26 +21,17 @@
     nav a:hover { color: #fbc02d; }
     #selector { text-align: center; margin: 12px 0; padding: 0.5rem 1rem; }
     select { padding: 6px 10px; font-size: 15px; border-radius: 6px; margin: 0 6px; }
-    #map, #windyContainer { 
-      width: 100%; 
-      height: 75vh; 
-      display: none; 
-    }
-    #windyContainer { 
-      text-align: center; 
-    }
-    #map {
-      display: block;
-    }
-    iframe { 
-      width: 95%; 
-      height: 75vh; 
-      border: none; 
-      border-radius: 8px; 
-    }
+    #map, #windyContainer { width: 100%; height: 75vh; display: none; }
+    #windyContainer { text-align: center; }
+    #map { display: block; }
+    iframe { width: 95%; height: 75vh; border: none; border-radius: 8px; }
     .update-box { position: absolute; top: 10px; right: 10px; background: rgba(255,255,255,0.9); padding: 6px 12px; border-radius: 8px; font-size: 13px; box-shadow: 0 0 10px rgba(0,0,0,0.2); z-index: 1000; }
-    
-
+    #btnUbicacion {
+      position: absolute; bottom: 20px; right: 20px; z-index: 1000;
+      background: #fbc02d; color: #333; border: none; padding: 10px 14px;
+      border-radius: 8px; cursor: pointer; font-weight: bold; box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    }
+    #btnUbicacion:hover { background: #f9a825; }
   </style>
 </head>
 <body>
@@ -50,8 +41,8 @@
   <nav>
     <a href="index.html">Inicio</a>
     <a href="mapa.html">Mapa</a>
-      <a href="#impacto">Información</a>
-    <a href="#impacto">Perfil</a>
+    <a href="#impacto">Información</a>
+    <a href="#perfil">Perfil</a>
   </nav>
 </header>
 
@@ -70,7 +61,6 @@
     <option value="uvIndex">☀️ Índice UV</option>
   </select>
 
-  <!-- Filtro de floración -->
   <select id="filtroFloracion" onchange="filtrarFloracion()">
     <option value="todas">Mostrar todas</option>
     <option value="alta">🌿 Alta floración</option>
@@ -78,247 +68,149 @@
   </select>
 </div>
 
-<!-- Timeline controls -->
-<div id="timeline" style="text-align:center; padding:0.5rem 1rem; background:rgba(255,255,255,0.9);">
-  <button id="playBtn" style="padding:6px 10px; margin-right:8px;">▶️</button>
-  <input type="range" id="timeRange" min="0" max="11" value="11" style="width:50%; vertical-align:middle;">
-  <span id="timeLabel" style="margin-left:8px; font-weight:600;"></span>
-</div>
-
 <div id="map"></div>
-
-
-
 <div id="windyContainer">
   <iframe id="windyFrame" title="Windy embed"></iframe>
 </div>
 
 <div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
+<button id="btnUbicacion">📍 Mi ubicación</button>
 
 <script>
   // === MAPA LEAFLET ===
-  const map = L.map('map').setView([10, 0], 2); // Vista global
-
-  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 19, attribution: '&copy; OpenStreetMap contributors'
-  }).addTo(map);
-
-  const satelite = L.tileLayer(
-    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-    { attribution: '&copy; Esri, Maxar, Earthstar Geographics' }
-  );
-
+  const map = L.map('map').setView([10, 0], 2);
+  const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+  const satelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}');
   L.control.layers({ "🗺️ Mapa": osm, "🛰️ Satélite": satelite }).addTo(map);
 
   // === CAPAS ===
   const capaFloracion = L.markerClusterGroup();
   const capaPlagas = L.markerClusterGroup();
-  const capaZonas = L.layerGroup().addTo(map); // Para resaltar regiones
+  const capaZonas = L.layerGroup().addTo(map);
+  let marcadorUsuario = null;
 
-  // === TIMELINE (últimos 12 meses) ===
-  const MONTHS = 12;
-  const now = new Date();
-  const timeSteps = [];
-  for (let i = MONTHS - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    timeSteps.push(d);
-  }
-
-  // cache de datos por paso temporal
-  const floracionCache = {}; // index -> array of {lat,lon,p}
-  let plagasData = []; // {lat, lon, plaga, cultivo, fecha: Date}
-
-  // generar plagas con fecha aleatoria en el último año
-  (function generarPlagasHistoricas() {
-    plagasData = [];
-    for (let i = 0; i < 200; i++) {
-      const lat = (Math.random() * 160) - 80;
-      const lon = (Math.random() * 360) - 180;
-      const plagas = ["Pulgón verde", "Mosca blanca", "Oruga", "Langosta", "Trips", "Escarabajo"];
-      const cultivos = ["Trigo", "Maíz", "Cítricos", "Soja", "Algodón", "Papa"];
-      const plaga = plagas[Math.floor(Math.random() * plagas.length)];
-      const cultivo = cultivos[Math.floor(Math.random() * cultivos.length)];
-      // fecha aleatoria en el rango de timeSteps
-      const offset = Math.floor(Math.random() * MONTHS);
-      const fecha = new Date(timeSteps[offset].getFullYear(), timeSteps[offset].getMonth(), 1 + Math.floor(Math.random() * 27));
-      plagasData.push({ lat, lon, plaga, cultivo, fecha });
-    }
-  })();
-
-  function colorFloracion(p) {
-    return p > 80 ? '#2ecc71' :
-           p > 50 ? '#f1c40f' :
-           p > 20 ? '#e67e22' : '#e74c3c';
-  }
-
-  // genera (y cachea) datos de floración para un paso temporal dado (index)
-  function getFloracionForStep(index) {
-    if (floracionCache[index]) return floracionCache[index];
-    const data = [];
-    // uso paso de 10 grados para rendimiento
-    for (let lat = -80; lat <= 80; lat += 10) {
-      for (let lon = -180; lon <= 180; lon += 10) {
-        // variación temporal: oscila con el índice
-        const seasonal = 20 * Math.sin((index / MONTHS) * Math.PI * 2 + (lat / 90));
+  // === GENERAR FLORACIÓN GLOBAL ===
+  function generarFloracion() {
+    capaFloracion.clearLayers();
+    for (let lat = -80; lat <= 80; lat += 5) {
+      for (let lon = -180; lon <= 180; lon += 5) {
         const base = Math.max(0, 100 - Math.abs(lat));
-        const noise = (Math.random() * 20 - 10);
-        const p = Math.min(100, Math.max(0, base + seasonal + noise));
-        data.push({ lat, lon, p });
+        const p = Math.min(100, Math.max(0, base + (Math.random() * 30 - 15)));
+        const color = p > 80 ? '#2ecc71' : p > 50 ? '#f1c40f' : p > 20 ? '#e67e22' : '#e74c3c';
+        const marker = L.circleMarker([lat, lon], {
+          radius: 5, fillColor: color, color: '#333',
+          weight: 1, opacity: 1, fillOpacity: 0.8
+        }).bindPopup(`<b>Floración:</b> ${p.toFixed(1)}%`);
+        capaFloracion.addLayer(marker);
       }
     }
-    floracionCache[index] = data;
-    return data;
   }
 
-  // renderizar floración y plagas para un paso
-  function renderStep(index) {
-    capaFloracion.clearLayers();
+  // === GENERAR PLAGAS ===
+  let plagas = [];
+  function generarPlagas() {
     capaPlagas.clearLayers();
-    capaZonas.clearLayers();
-
-    const data = getFloracionForStep(index);
-    data.forEach(d => {
-      const color = colorFloracion(d.p);
-      const marker = L.circleMarker([d.lat, d.lon], {
-        radius: 5, fillColor: color, color: '#333', weight: 1, opacity: 1, fillOpacity: 0.8
-      }).bindPopup(`<b>Floración estimada:</b> ${d.p.toFixed(1)}%<br><b>Lat:</b> ${d.lat}, <b>Lon:</b> ${d.lon}`);
-      capaFloracion.addLayer(marker);
-    });
-
-    // mostrar plagas cuyo mes/año coincida con el paso
-    const stepDate = timeSteps[index];
-    plagasData.filter(p => p.fecha.getFullYear() === stepDate.getFullYear() && p.fecha.getMonth() === stepDate.getMonth())
-      .forEach(p => {
-        const marker = L.circleMarker([p.lat, p.lon], { radius: 7, fillColor: 'red', color: '#800', weight:1, opacity:1, fillOpacity:0.9 })
-          .bindPopup(`<b>Plaga:</b> ${p.plaga}<br><b>Cultivo:</b> ${p.cultivo}<br><b>Fecha:</b> ${p.fecha.toISOString().split('T')[0]}`);
-        capaPlagas.addLayer(marker);
-      });
-
-    // aplicar filtro de floración (resaltar zonas) si corresponde
-    filtrarFloracion();
-
-    // añadir capas si no están
-    if (!map.hasLayer(capaFloracion)) map.addLayer(capaFloracion);
-    if (!map.hasLayer(capaPlagas)) map.addLayer(capaPlagas);
+    plagas = [];
+    for (let i = 0; i < 100; i++) {
+      const lat = (Math.random() * 160) - 80;
+      const lon = (Math.random() * 360) - 180;
+      const plaga = ["Pulgón", "Mosca blanca", "Langosta"][Math.floor(Math.random() * 3)];
+      const marker = L.circleMarker([lat, lon], {
+        radius: 6, fillColor: "red", color: "#800", weight: 1, fillOpacity: 0.8
+      }).bindPopup(`⚠️ <b>Plaga detectada:</b> ${plaga}`);
+      capaPlagas.addLayer(marker);
+      plagas.push({ lat, lon, plaga });
+    }
   }
 
-  // filtrar floración en la capaZonas usando los datos actualmente renderizados
+  generarFloracion();
+  generarPlagas();
+  map.addLayer(capaFloracion);
+
+  // === FILTRO FLORACIÓN ===
   function filtrarFloracion() {
     const filtro = document.getElementById("filtroFloracion").value;
     capaZonas.clearLayers();
-    if (filtro === "todas") return;
-    // tomamos los markers actuales en capaFloracion (iterable)
-    capaFloracion.eachLayer(m => {
-      // extraemos porcentaje desde el popup content (no ideal pero suficiente)
-      const popup = m.getPopup && m.getPopup();
+    capaFloracion.eachLayer(marker => {
+      const popup = marker.getPopup();
       if (!popup) return;
-      const txt = popup.getContent();
-      const match = txt.match(/([0-9]+\.[0-9]+|[0-9]+)%/);
+      const match = popup.getContent().match(/([0-9.]+)%/);
       if (!match) return;
-      const p = parseFloat(match[1]);
-      const meets = filtro === 'alta' ? p > 75 : p < 25;
-      if (meets) {
-        const circle = L.circle(m.getLatLng(), { radius: 200000, color: filtro === 'alta' ? '#2ecc71' : '#e74c3c', fillColor: filtro === 'alta' ? '#2ecc71' : '#e74c3c', fillOpacity: 0.25 });
-        capaZonas.addLayer(circle);
+      const valor = parseFloat(match[1]);
+      if (filtro === "alta" && valor > 75) {
+        capaZonas.addLayer(L.circle(marker.getLatLng(), { radius: 200000, color: '#2ecc71', fillColor: '#2ecc71', fillOpacity: 0.3 }));
+      } else if (filtro === "baja" && valor < 25) {
+        capaZonas.addLayer(L.circle(marker.getLatLng(), { radius: 200000, color: '#e74c3c', fillColor: '#e74c3c', fillOpacity: 0.3 }));
       }
     });
   }
 
-  // timeline UI
-  const timeRange = document.getElementById('timeRange');
-  const timeLabel = document.getElementById('timeLabel');
-  const playBtn = document.getElementById('playBtn');
-  let playInterval = null;
-
-  function updateTimeLabel(index) {
-    const d = timeSteps[index];
-    const fmt = d.toLocaleString('es-ES', { year: 'numeric', month: 'short' });
-    timeLabel.textContent = fmt;
-  }
-
-  // inicializar control
-  timeRange.max = timeSteps.length - 1;
-  timeRange.value = timeSteps.length - 1; // mostrar más reciente
-  updateTimeLabel(timeRange.value);
-
-  timeRange.addEventListener('input', e => {
-    const idx = parseInt(e.target.value, 10);
-    renderStep(idx);
-    updateTimeLabel(idx);
-  });
-
-  playBtn.addEventListener('click', () => {
-    if (playInterval) {
-      clearInterval(playInterval); playInterval = null; playBtn.textContent = '▶️';
-    } else {
-      playBtn.textContent = '⏸️';
-      playInterval = setInterval(() => {
-        let idx = parseInt(timeRange.value, 10);
-        idx = Math.min(timeSteps.length - 1, idx + 1);
-        timeRange.value = idx;
-        updateTimeLabel(idx);
-        renderStep(idx);
-        if (idx === timeSteps.length - 1) { clearInterval(playInterval); playInterval = null; playBtn.textContent = '▶️'; }
-      }, 800);
-    }
-  });
-
-  // Inicializar: renderizar el paso más reciente
-  renderStep(timeSteps.length - 1);
-
-  // actualizar datos cada minuto (solo regenerará si cambias manualmente)
-  setInterval(() => {
-    // limpieza de cache pequeña para permitir variación en regeneraciones
-    for (const k in floracionCache) delete floracionCache[k];
-    renderStep(parseInt(timeRange.value, 10));
-    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
-  }, 60000);
-
   // === CLIMA (WINDY) ===
   function cambiarCapaClima() {
-    const overlay = document.getElementById('layerSelect').value || 'temp';
+    const overlay = document.getElementById('layerSelect').value;
     const iframe = document.getElementById('windyFrame');
-    iframe.src = `https://embed.windy.com/embed2.html?lat=0&lon=0&zoom=2&level=surface&overlay=${overlay}&menu=true&message=true&calendar=now&pressure=true&type=map&location=coordinates`;
+    iframe.src = `https://embed.windy.com/embed2.html?lat=0&lon=0&zoom=2&level=surface&overlay=${overlay}&menu=true`;
   }
 
-  // mantener comportamiento previo para selector
   function cambiarMapa() {
     const tipo = document.getElementById('mapSelect').value;
     const mapDiv = document.getElementById('map');
     const windyDiv = document.getElementById('windyContainer');
     const layerSelect = document.getElementById('layerSelect');
 
-    // Ocultar todos los elementos
-    [mapDiv, windyDiv].forEach(div => div.style.display = "none");
-    layerSelect.style.display = "none";
-
-    // Mostrar el panel correspondiente según la selección
-    switch(tipo) {
-      case "clima":
-        windyDiv.style.display = "block";
-        layerSelect.style.display = "inline-block";
-        cambiarCapaClima();
-        break;
-      default:
-        mapDiv.style.display = "block";
-        if (tipo === "floracion") {
-          if (!map.hasLayer(capaFloracion)) map.addLayer(capaFloracion);
-          map.removeLayer(capaPlagas);
-        } else if (tipo === "plagas") {
-          if (!map.hasLayer(capaPlagas)) map.addLayer(capaPlagas);
-          map.removeLayer(capaFloracion);
-        }
-        setTimeout(() => map.invalidateSize(), 200);
+    if (tipo === "clima") {
+      mapDiv.style.display = "none";
+      windyDiv.style.display = "block";
+      layerSelect.style.display = "inline-block";
+      cambiarCapaClima();
+    } else {
+      mapDiv.style.display = "block";
+      windyDiv.style.display = "none";
+      layerSelect.style.display = "none";
+      if (tipo === "floracion") {
+        map.addLayer(capaFloracion);
+        map.removeLayer(capaPlagas);
+      } else if (tipo === "plagas") {
+        map.addLayer(capaPlagas);
+        map.removeLayer(capaFloracion);
+      }
+      setTimeout(() => map.invalidateSize(), 200);
     }
   }
 
+  // === GEOLOCALIZACIÓN ===
+  function mostrarUbicacion(pos) {
+    const { latitude, longitude } = pos.coords;
+    if (marcadorUsuario) map.removeLayer(marcadorUsuario);
+    marcadorUsuario = L.marker([latitude, longitude], {
+      icon: L.icon({
+        iconUrl: 'https://cdn-icons-png.flaticon.com/512/64/64113.png',
+        iconSize: [35, 35],
+        iconAnchor: [17, 35]
+      })
+    }).addTo(map).bindPopup("📍 Tu ubicación actual").openPopup();
+    map.setView([latitude, longitude], 6);
+  }
 
+  function errorUbicacion() {
+    alert("⚠️ No se pudo obtener tu ubicación. Verifica los permisos del navegador.");
+  }
 
-  // Inicializar vista correcta según selector
+  function obtenerUbicacion() {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(mostrarUbicacion, errorUbicacion);
+    } else {
+      alert("Tu navegador no soporta geolocalización.");
+    }
+  }
+
+  document.getElementById('btnUbicacion').addEventListener('click', obtenerUbicacion);
+
+  // === INICIALIZAR ===
   document.addEventListener('DOMContentLoaded', () => {
     cambiarMapa();
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
   });
 </script>
 </body>
 </html>
-
