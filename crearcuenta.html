@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mapa Global - Floración, Plagas y Clima con UV</title>
+  <title>Global Map - Flowering, Pests and Climate with UV</title>
 
   <!-- Leaflet y MarkerCluster -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -50,44 +50,44 @@
 <body>
 
 <header>
-  <h2>🌍 Mapas Globales: Floración, Plagas y Clima (con Monitoreo UV)</h2>
+  <h2>🌍 Global Maps: Flowering, Pests and Climate (with UV Monitoring)</h2>
 </header>
 
 <div id="selector">
-  <label for="mapSelect"><b>Selecciona mapa:</b></label>
+  <label for="mapSelect"><b>Select map:</b></label>
   <select id="mapSelect" onchange="cambiarMapa()">
-    <option value="floracion">🌸 Floración</option>
-    <option value="plagas">🐛 Plagas</option>
-    <option value="clima">🌦 Clima (Windy)</option>
+    <option value="floracion">🌸 Flowering</option>
+    <option value="plagas">🐛 Pests</option>
+    <option value="clima">🌦 Climate (Windy)</option>
   </select>
 
   <select id="layerSelect" onchange="cambiarCapaClima()" style="display:none;">
-    <option value="temp">🌡 Temperatura</option>
-    <option value="rh">💧 Humedad relativa</option>
-    <option value="co">🧪 Monóxido de carbono (CO)</option>
-    <option value="uvIndex">☀ Índice UV</option>
+    <option value="temp">🌡 Temperature</option>
+    <option value="rh">💧 Relative Humidity</option>
+    <option value="co">🧪 Carbon Monoxide (CO)</option>
+    <option value="uvIndex">☀ UV Index</option>
   </select>
 </div>
 
 <!-- Formulario para crear cuenta -->
 <div id="accountForm">
-  <h3>Crear Cuenta</h3>
+  <h3>Create Account</h3>
   <form id="formCrearCuenta" onsubmit="return crearCuenta(event)">
-    <input type="text" id="username" placeholder="Nombre de usuario" required />
-    <input type="email" id="email" placeholder="Correo electrónico" required />
-    <label>¿Para qué usarás la página?</label><br />
-    <input type="radio" id="agricultura" name="uso" value="Agricultura" required />
-    <label for="agricultura">Agricultura</label>
-    <input type="radio" id="investigacion" name="uso" value="Investigación" />
-    <label for="investigacion">Investigación</label><br /><br />
-    <button type="submit">Crear cuenta</button>
+    <input type="text" id="username" placeholder="Username" required />
+    <input type="email" id="email" placeholder="Email" required />
+    <label>What will you use the page for?</label><br />
+    <input type="radio" id="agricultura" name="uso" value="Agriculture" required />
+    <label for="agricultura">Agriculture</label>
+    <input type="radio" id="investigacion" name="uso" value="Research" />
+    <label for="investigacion">Research</label><br /><br />
+    <button type="submit">Create account</button>
   </form>
 </div>
 
 <!-- Buscador de ubicación -->
 <div id="searchLocation">
-  <input type="text" id="inputLocation" placeholder="Buscar ubicación (ej. Ciudad, país)" />
-  <button onclick="buscarUbicacion()">Buscar</button>
+  <input type="text" id="inputLocation" placeholder="Search location (e.g. City, country)" />
+  <button onclick="buscarUbicacion()">Search</button>
 </div>
 
 <div id="map"></div>
@@ -96,7 +96,7 @@
   <iframe id="windyFrame"></iframe>
 </div>
 
-<div class="update-box">🔄 Última actualización: <span id="lastUpdate">---</span></div>
+<div class="update-box">🔄 Last update: <span id="lastUpdate">---</span></div>
 
 <script>
   // Función para crear cookie simple (30 días)

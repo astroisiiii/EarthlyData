@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>EarthlyData — Floración (NDVI), Plagas reales (GBIF) y Clima (OpenWeather)</title>
+  <title>EarthlyData — Pest Map (GBIF)</title>
 
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -71,15 +71,15 @@
 </header>
 
 <div id="controls">
-  <label>Vista:
+  <label>View:
     <select id="modeSelect">
-      <option value="plagas">🐛 Plagues (GBIF)</option>
+      <option value="plagas">🐛 Pests (GBIF)</option>
     </select>
   </label>
 
 
 
-  <button id="reloadBtn">🔄 Recharge plagues</button>
+  <button id="reloadBtn">🔄 Reload pests</button>
   
 
 </div>
@@ -88,12 +88,12 @@
 
 
 <div id="legend" aria-hidden="true">
-  <b>Leyenda</b><br>
-  <span style="display:inline-block;width:12px;height:12px;background:#e74c3c;border:1px solid #800;margin-right:6px;"></span> Plague (GBIF)<br>
+  <b>Legend</b><br>
+  <span style="display:inline-block;width:12px;height:12px;background:#e74c3c;border:1px solid #800;margin-right:6px;"></span> Pest (GBIF)<br>
   <span style="display:inline-block;width:12px;height:12px;background:#2ecc71;border:1px solid #0a5;margin-right:6px;"></span> High NDVI (visual)<br>
 </div>
 <div class="info" id="infoBox">Loading...</div>
-<button id="btnCenter" title="Centrar en mi ubicación">📍 My ubication</button>
+<button id="btnCenter" title="Center on my location">📍 My location</button>
 
 <script>
 /* ============================
@@ -156,7 +156,7 @@ const SPECIES_LIST = [
 async function cargarPlagasGBIF() {
   capaPlagas.clearLayers();
   plagasGBIF = [];
-  infoBox.textContent = '🔎 Descargando ocurrencias GBIF para especies plaga...';
+  infoBox.textContent = '🔎 Downloading GBIF occurrences for pest species...';
 
   try {
     for (const scientificName of SPECIES_LIST) {
@@ -181,15 +181,15 @@ async function cargarPlagasGBIF() {
           color: '#800',
           weight: 1,
           fillOpacity: 0.9
-        }).bindPopup(`<b>🪲 ${especie}</b><br>Fecha: ${fecha}<br>Fuente: GBIF`);
+        }).bindPopup(`<b>🪲 ${especie}</b><br>Date: ${fecha}<br>Source: GBIF`);
         m.addTo(capaPlagas);
         plagasGBIF.push({ lat, lon, especie, fecha });
       }
     }
-    infoBox.textContent = `🐛 Plagues loaded: ${plagasGBIF.length} puntos (GBIF)`;
+    infoBox.textContent = `🐛 Pests loaded: ${plagasGBIF.length} points (GBIF)`;
   } catch (err) {
     console.error('Error cargando GBIF', err);
-    infoBox.textContent = '⚠️ Error al obtener datos GBIF';
+    infoBox.textContent = '⚠️ Error getting GBIF data';
   }
 }
 
@@ -200,7 +200,7 @@ async function cargarPlagasGBIF() {
    ---------------------------- */
 async function obtenerClimaLocalYMostrar(lat, lon) {
   if (!OPENWEATHER_API_KEY) {
-    infoBox.textContent = '📍 Ubicación detectada — agrega tu OpenWeather API key para ver clima local.';
+    infoBox.textContent = '📍 Location detected — add your OpenWeather API key to see local weather.';
     return;
   }
   try {
@@ -215,23 +215,23 @@ async function obtenerClimaLocalYMostrar(lat, lon) {
     infoBox.innerHTML = `📍 ${lat.toFixed(3)}, ${lon.toFixed(3)} · 🌡 ${temp}°C · 💧 ${hum}% · ☀️ UVI: ${uvi} <br>${desc}`;
   } catch (err) {
     console.warn('OpenWeather onecall error', err);
-    infoBox.textContent = '📍 Ubicación detectada — no se pudo obtener clima local.';
+    infoBox.textContent = '📍 Location detected — could not get local weather.';
   }
 }
 
 function centrarEnUsuario() {
-  if (!navigator.geolocation) { alert('Your browser doesnt support geolocalization.'); return; }
+  if (!navigator.geolocation) { alert('Your browser does not support geolocation.'); return; }
   navigator.geolocation.getCurrentPosition(pos => {
     const lat = pos.coords.latitude;
     const lon = pos.coords.longitude;
     userCoords = { lat, lon };
-    if (!userMarker) userMarker = L.marker([lat, lon]).addTo(map).bindPopup('📍 Tú').openPopup();
+    if (!userMarker) userMarker = L.marker([lat, lon]).addTo(map).bindPopup('📍 You').openPopup();
     else userMarker.setLatLng([lat, lon]);
     map.setView([lat, lon], 6);
     obtenerClimaLocalYMostrar(lat, lon);
     revisarPlagasCercanas(lat, lon);
   }, err => {
-    alert('Couldnt define the location: ' + (err.message || err.code));
+    alert('Could not get location: ' + (err.message || err.code));
   }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 });
 }
 
@@ -244,11 +244,11 @@ function revisarPlagasCercanas(lat, lon) {
     if (d <= 50) {
       found++;
       if (Notification.permission === 'granted') {
-        new Notification('⚠️ Plague near', { body: `${p.especie || 'Plaga'} a ${d.toFixed(1)} km`, icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' });
+        new Notification('⚠️ Pest nearby', { body: `${p.especie || 'Pest'} at ${d.toFixed(1)} km`, icon: 'https://cdn-icons-png.flaticon.com/512/616/616408.png' });
       }
     }
   }
-  if (found) infoBox.innerHTML += `<br>⚠️ ${found} plague(s) detected from <50 km`;
+  if (found) infoBox.innerHTML += `<br>⚠️ ${found} pest(s) detected within <50 km`;
 }
 
 /* ============================
@@ -256,11 +256,11 @@ function revisarPlagasCercanas(lat, lon) {
    ============================ */
 // Mostrar plagas por defecto
 map.addLayer(capaPlagas);
-infoBox.textContent = `🐛 Plagues (GBIF): ${plagasGBIF.length} puntos`;
+infoBox.textContent = `🐛 Pests (GBIF): ${plagasGBIF.length} points`;
 
 
 reloadBtn.addEventListener('click', async () => {
-  infoBox.textContent = '🔄 Recargando datos GBIF...';
+  infoBox.textContent = '🔄 Reloading GBIF data...';
   await cargarPlagasGBIF();
   if (modeSelect.value === 'plagas') map.addLayer(capaPlagas);
 });
@@ -272,10 +272,10 @@ btnCenter.addEventListener('click', centrarEnUsuario);
 
 
 (async function init(){
-  infoBox.textContent = 'Starting — loading plagues...';
+  infoBox.textContent = 'Starting — loading pests...';
   await cargarPlagasGBIF();
   map.addLayer(capaPlagas);
-  infoBox.textContent = 'Ready. Touch "mi location" to receive alerts from near plagues.';
+  infoBox.textContent = 'Ready. Click "My location" to receive alerts from nearby pests.';
 })();
 </script>
 </body>
