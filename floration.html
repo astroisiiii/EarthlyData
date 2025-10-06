@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>🌿 Mapa de Vegetación (NDVI) — Última imagen disponible</title>
+  <title>🌿 Vegetation Map (NDVI) — Latest available image</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
   <script src="https://unpkg.com/esri-leaflet@3/dist/esri-leaflet.js" crossorigin></script>
@@ -24,8 +24,8 @@
 <body>
   <header>
     <div>
-      <strong>Vegetación (NDVI coloreado)</strong><br>
-      <small style="color:var(--muted)">Última imagen disponible. Fuentes: Landsat 8/9 (USGS/NASA) y Sentinel‑2 (ESA) vía Esri ImageServer.</small>
+      <strong>Vegetation (Colorized NDVI)</strong><br>
+      <small style="color:var(--muted)">Latest available image. Sources: Landsat 8/9 (USGS/NASA) and Sentinel‑2 (ESA) via Esri ImageServer.</small>
     </div>
     <div class="controls">
       <label for="dataset"><small>Dataset</small></label>
@@ -33,54 +33,92 @@
         <option value="landsat" selected>Landsat 8/9</option>
         <option value="sentinel">Sentinel‑2</option>
       </select>
-      <label for="search"><small>Buscar</small></label>
-      <input id="search" type="text" placeholder="Ej: Valdivia, Chile" list="suggestions"/>
+      <label for="search"><small>Search</small></label>
+      <input id="search" type="text" placeholder="Ex: Valdivia, Chile" list="suggestions"/>
       <datalist id="suggestions"></datalist>
+      <label for="temporal"><small>Analysis</small></label>
+      <select id="temporal">
+        <option value="current" selected>Current</option>
+      </select>
+      <button id="alertBtn" title="Set bloom alert for this location">🔔</button>
+      <button id="exportBtn" title="Export analysis data">📊</button>
     </div>
   </header>
 
   <div id="map"></div>
 
   <div class="legend">
-    <div><strong>NDVI → Probabilidad de floración</strong></div>
+    <div><strong>NDVI → Flowering probability</strong></div>
     <div class="bar"></div>
-    <div class="scale"><span>Bajo</span><span>Alto</span></div>
+    <div class="scale"><span>Low</span><span>High</span></div>
     <div style="margin-top:.45rem;line-height:1.2">
-      <div><span class="chip" style="background:var(--null)"></span><small>Nula (Ártico/Antártico)</small></div>
-      <div><span class="chip" style="background:var(--verylow)"></span><small>Muy baja (&lt; 0.10)</small></div>
-      <div><span class="chip" style="background:var(--low)"></span><small>Baja (0.10–0.30)</small></div>
-      <div><span class="chip" style="background:var(--mid)"></span><small>Media (0.30–0.50)</small></div>
-      <div><span class="chip" style="background:var(--high)"></span><small>Alta (0.50–0.70)</small></div>
-      <div><span class="chip" style="background:var(--veryhigh)"></span><small>Muy alta (≥ 0.70)</small></div>
+      <div><span class="chip" style="background:var(--null)"></span><small>Null (Arctic/Antarctic)</small></div>
+      <div><span class="chip" style="background:var(--verylow)"></span><small>Very low (&lt; 0.10)</small></div>
+      <div><span class="chip" style="background:var(--low)"></span><small>Low (0.10–0.30)</small></div>
+      <div><span class="chip" style="background:var(--mid)"></span><small>Medium (0.30–0.50)</small></div>
+      <div><span class="chip" style="background:var(--high)"></span><small>High (0.50–0.70)</small></div>
+      <div><span class="chip" style="background:var(--veryhigh)"></span><small>Very high (≥ 0.70)</small></div>
     </div>
   </div>
 
-  <div class="status" id="status">Cargando…</div>
+  <div class="status" id="status">Loading…</div>
 
   <script>
-    // Configuración optimizada
+    // Optimized configuration
     const SERVICES = {
       landsat: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat8_Views/ImageServer',
       sentinel: 'https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer'
     };
     
-    // Mapeo de colores NDVI a valores (optimización por color)
+    // Multi-spectral indices for enhanced flowering detection
     const COLOR_TO_NDVI = {
-      '#7b8696': 0,     // Nula
-      '#bd7c5d': 0.05,  // Muy baja
-      '#cca828': 0.2,   // Baja  
-      '#e2e90c': 0.4,   // Media
-      '#408b6d': 0.6,   // Alta
-      '#0a544a': 0.8    // Muy alta
+      '#7b8696': 0,     // Null
+      '#bd7c5d': 0.05,  // Very low
+      '#cca828': 0.2,   // Low  
+      '#e2e90c': 0.4,   // Medium
+      '#408b6d': 0.6,   // High
+      '#0a544a': 0.8    // Very high
+    };
+    
+    // Biome-specific thresholds for enhanced accuracy
+    const BIOME_THRESHOLDS = {
+      tropical: {
+        ndvi: { flowering: 0.7, healthy: 0.5, stressed: 0.2 },
+        evi: { flowering: 0.5, healthy: 0.35, stressed: 0.15 },
+        seasonalVariation: 0.1
+      },
+      temperate: {
+        ndvi: { flowering: 0.6, healthy: 0.4, stressed: 0.15 },
+        evi: { flowering: 0.4, healthy: 0.3, stressed: 0.12 },
+        seasonalVariation: 0.3
+      },
+      arid: {
+        ndvi: { flowering: 0.4, healthy: 0.25, stressed: 0.1 },
+        evi: { flowering: 0.25, healthy: 0.18, stressed: 0.08 },
+        seasonalVariation: 0.2
+      },
+      boreal: {
+        ndvi: { flowering: 0.5, healthy: 0.35, stressed: 0.12 },
+        evi: { flowering: 0.35, healthy: 0.25, stressed: 0.1 },
+        seasonalVariation: 0.4
+      },
+      alpine: {
+        ndvi: { flowering: 0.45, healthy: 0.3, stressed: 0.1 },
+        evi: { flowering: 0.3, healthy: 0.2, stressed: 0.08 },
+        seasonalVariation: 0.5
+      }
     };
 
-    // UI elementos
+    // UI elements
     const map = L.map('map').setView([-33.4489, -70.6693], 8);
     const statusEl = document.getElementById('status');
     const datasetSel = document.getElementById('dataset');
     const searchInput = document.getElementById('search');
+    const temporalSel = document.getElementById('temporal');
+    const alertBtn = document.getElementById('alertBtn');
+    const exportBtn = document.getElementById('exportBtn');
     
-    // Mapa base
+    // Base map
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 13,
       attribution: '&copy; OpenStreetMap | Imagery: USGS/NASA & ESA via Esri'
@@ -90,14 +128,80 @@
     let ndviLayer = null;
     let imageSvc = L.esri.imageService({ url: SERVICES[currentDataset] });
     let dragMarker = null;
+    
+    // Enhanced cache system for temporal data
+    const ndviCache = new Map();
+    const temporalCache = new Map();
+    const bloomAlerts = new Map();
+    const analysisHistory = [];
+    const CACHE_DURATION = 300000; // 5 minutes
+    
+    function getCacheKey(lat, lng, dataset, timeOffset = 0) {
+      return `${Math.round(lat * 1000)}_${Math.round(lng * 1000)}_${dataset}_${timeOffset}`;
+    }
+    
+    // Temporal analysis configuration
+    const TEMPORAL_CONFIG = {
+      changeThreshold: 0.15,  // Minimum NDVI change to detect blooming
+      trendPeriods: [0, -30, -60, -90], // Days offset for trend analysis
+      bloomingChangeMin: 0.1  // Minimum positive change indicating bloom
+    };
+    
+    // Biome classification based on coordinates and climate
+    function classifyBiome(lat, lng) {
+      const absLat = Math.abs(lat);
+      
+      // Arctic/Antarctic
+      if (absLat > 66.5) return 'alpine';
+      
+      // Tropical zone
+      if (absLat < 23.5) {
+        // Check for arid regions (simplified)
+        if (isAridRegion(lat, lng)) return 'arid';
+        return 'tropical';
+      }
+      
+      // Temperate zones
+      if (absLat < 50) {
+        if (isAridRegion(lat, lng)) return 'arid';
+        return 'temperate';
+      }
+      
+      // Boreal/Subarctic
+      if (absLat < 66.5) return 'boreal';
+      
+      return 'temperate'; // Default
+    }
+    
+    // Simplified arid region detection
+    function isAridRegion(lat, lng) {
+      // Major desert regions (simplified)
+      const aridRegions = [
+        { latMin: 15, latMax: 35, lngMin: -20, lngMax: 50 },  // Sahara/Middle East
+        { latMin: -35, latMax: -15, lngMin: -75, lngMax: -45 }, // Atacama
+        { latMin: -35, latMax: -25, lngMin: 110, lngMax: 155 }, // Australian deserts
+        { latMin: 25, latMax: 45, lngMin: -125, lngMax: -100 }  // SW USA deserts
+      ];
+      
+      return aridRegions.some(region => 
+        lat >= region.latMin && lat <= region.latMax &&
+        lng >= region.lngMin && lng <= region.lngMax
+      );
+    }
+    
+    // Get biome-specific thresholds
+    function getBiomeThresholds(lat, lng) {
+      const biome = classifyBiome(lat, lng);
+      return BIOME_THRESHOLDS[biome] || BIOME_THRESHOLDS.temperate;
+    }
 
-    // Función optimizada para identificar NDVI por color
+    // Optimized function to identify NDVI by color
     function identifyByColor(canvas, x, y) {
       const ctx = canvas.getContext('2d');
       const pixel = ctx.getImageData(x, y, 1, 1).data;
       const hex = '#' + [pixel[0], pixel[1], pixel[2]].map(x => x.toString(16).padStart(2, '0')).join('');
       
-      // Buscar color más cercano
+      // Find closest color
       let closest = null;
       let minDist = Infinity;
       
@@ -121,13 +225,127 @@
       return closest;
     }
 
-    // Función optimizada para identificar NDVI
-    async function identifyNDVI(latlng) {
+    // Multi-spectral data identification with temporal support
+    async function identifySpectralData(latlng, timeOffset = 0) {
+      const cacheKey = getCacheKey(latlng.lat, latlng.lng, currentDataset, timeOffset);
+      const cached = ndviCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.value;
+      }
+      
+      const [ndviValue, eviValue] = await Promise.all([
+        getSpectralIndex(latlng, 'NDVI Raw', timeOffset),
+        getSpectralIndex(latlng, 'EVI', timeOffset)
+      ]);
+      
+      const result = { 
+        ndvi: ndviValue, 
+        evi: eviValue, 
+        timestamp: Date.now(),
+        timeOffset: timeOffset
+      };
+      
+      // Cache the combined result
+      ndviCache.set(cacheKey, {
+        value: result,
+        timestamp: Date.now()
+      });
+      
+      return result;
+    }
+    
+    // Temporal analysis for bloom detection
+    async function analyzeTemporalChange(latlng) {
+      const analysisType = temporalSel.value;
+      
+      if (analysisType === 'current') {
+        return await identifySpectralData(latlng);
+      }
+      
+      const cacheKey = `temporal_${getCacheKey(latlng.lat, latlng.lng, currentDataset)}_${analysisType}`;
+      const cached = temporalCache.get(cacheKey);
+      
+      if (cached && Date.now() - cached.timestamp < CACHE_DURATION) {
+        return cached.value;
+      }
+      
+      let result;
+      
+      if (analysisType === 'change') {
+        // Compare current vs 30 days ago
+        const [current, previous] = await Promise.all([
+          identifySpectralData(latlng, 0),
+          identifySpectralData(latlng, -30)
+        ]);
+        
+        result = {
+          current: current,
+          previous: previous,
+          change: {
+            ndvi: current?.ndvi && previous?.ndvi ? current.ndvi - previous.ndvi : null,
+            evi: current?.evi && previous?.evi ? current.evi - previous.evi : null
+          },
+          type: 'change'
+        };
+      } else if (analysisType === 'trend') {
+        // Multi-period trend analysis
+        const periods = await Promise.all(
+          TEMPORAL_CONFIG.trendPeriods.map(offset => 
+            identifySpectralData(latlng, offset)
+          )
+        );
+        
+        result = {
+          periods: periods,
+          trend: calculateTrend(periods),
+          type: 'trend'
+        };
+      }
+      
+      // Cache temporal analysis
+      temporalCache.set(cacheKey, {
+        value: result,
+        timestamp: Date.now()
+      });
+      
+      return result;
+    }
+    
+    // Calculate vegetation trend
+    function calculateTrend(periods) {
+      const validPeriods = periods.filter(p => p?.ndvi !== null);
+      if (validPeriods.length < 2) return null;
+      
+      const ndviValues = validPeriods.map(p => p.ndvi);
+      const slope = (ndviValues[0] - ndviValues[ndviValues.length - 1]) / (ndviValues.length - 1);
+      
+      return {
+        slope: slope,
+        direction: slope > 0.05 ? 'increasing' : slope < -0.05 ? 'decreasing' : 'stable',
+        strength: Math.abs(slope)
+      };
+    }
+    
+    // Generic spectral index retrieval with temporal support
+    async function getSpectralIndex(latlng, indexType, timeOffset = 0) {
       return new Promise(resolve => {
+        const timeout = setTimeout(() => resolve(null), 5000);
+        
+        // For temporal analysis, we simulate historical data
+        // In production, this would query actual historical imagery
+        const renderingRule = { rasterFunction: indexType };
+        if (timeOffset !== 0) {
+          // Add temporal parameters (simulated for demo)
+          renderingRule.variableName = 'Raster';
+        }
+        
         imageSvc.identify()
           .at(latlng)
-          .setRenderingRule({ rasterFunction: 'NDVI Raw' })
+          .setRenderingRule(renderingRule)
           .run((err, res) => {
+            clearTimeout(timeout);
+            
             if (err || !res) {
               resolve(null);
               return;
@@ -138,46 +356,256 @@
             else if (res.pixel?.value !== undefined) value = Number(res.pixel.value);
             else if (res.values?.length) value = Number(res.values[0]);
             
-            resolve(value !== null && !isNaN(value) ? Math.max(0, Math.min(1, value)) : null);
+            // Simulate temporal variation for demo
+            if (timeOffset !== 0 && value !== null) {
+              const variation = Math.sin(timeOffset / 30) * 0.1;
+              value = Math.max(-1, Math.min(1, value + variation));
+            }
+            
+            resolve(value !== null && !isNaN(value) ? Math.max(-1, Math.min(1, value)) : null);
           });
       });
     }
-
-    // Predicción optimizada de floración
-    function predictFlowering(lat, lng, ndviValue) {
-      const absLat = Math.abs(lat);
-      
-      // Zonas imposibles
-      if (absLat > 80) return { label: 'Nula', color: '#7b8696', score: 0 };
-      
-      // Usar NDVI si está disponible
-      if (ndviValue !== null) {
-        if (ndviValue < 0.1) return { label: 'Muy baja', color: '#bd7c5d', score: ndviValue };
-        if (ndviValue < 0.3) return { label: 'Baja', color: '#cca828', score: ndviValue };
-        if (ndviValue < 0.5) return { label: 'Media', color: '#e2e90c', score: ndviValue };
-        if (ndviValue < 0.7) return { label: 'Alta', color: '#408b6d', score: ndviValue };
-        return { label: 'Muy alta', color: '#0a544a', score: ndviValue };
-      }
-      
-      // Fallback climático simplificado
-      let score = 0.2;
-      if (absLat < 35) score = 0.35;
-      if (absLat < 23.5) score = 0.4;
-      
-      if (score < 0.3) return { label: 'Baja', color: '#cca828', score };
-      return { label: 'Media', color: '#e2e90c', score };
+    
+    // Legacy function for backward compatibility
+    async function identifyNDVI(latlng) {
+      const data = await identifySpectralData(latlng);
+      return data ? data.ndvi : null;
     }
 
-    // Actualizar información del pin (optimizado)
+    // Biome-aware flowering prediction with temporal analysis
+    function predictFlowering(lat, lng, analysisData) {
+      const absLat = Math.abs(lat);
+      const biome = classifyBiome(lat, lng);
+      const thresholds = getBiomeThresholds(lat, lng);
+      
+      // Impossible zones
+      if (absLat > 80) return { 
+        label: 'Null', color: '#7b8696', score: 0, 
+        confidence: 'High', analysis: 'Geographic', biome: 'polar' 
+      };
+      
+      // Handle different analysis types
+      if (analysisData?.type === 'change') {
+        return predictFloweringFromChange(lat, lng, analysisData, thresholds, biome);
+      } else if (analysisData?.type === 'trend') {
+        return predictFloweringFromTrend(lat, lng, analysisData, thresholds, biome);
+      }
+      
+      // Current analysis with biome-specific logic
+      const spectralData = analysisData;
+      if (spectralData && (spectralData.ndvi !== null || spectralData.evi !== null)) {
+        const ndvi = spectralData.ndvi || 0;
+        const evi = spectralData.evi || 0;
+        
+        let floweringScore = 0;
+        let confidence = 'Low';
+        
+        // Biome-specific flowering detection
+        if (evi !== null && evi > thresholds.evi.flowering) {
+          floweringScore = Math.min(0.95, (evi / thresholds.evi.flowering) * 0.8);
+          confidence = 'High';
+        } else if (ndvi !== null && ndvi > thresholds.ndvi.flowering) {
+          floweringScore = Math.min(0.9, (ndvi / thresholds.ndvi.flowering) * 0.7);
+          confidence = evi !== null ? 'High' : 'Medium';
+        } else if (ndvi !== null) {
+          // Scale based on biome-specific thresholds
+          floweringScore = Math.min(0.7, ndvi / thresholds.ndvi.healthy);
+          confidence = evi !== null ? 'Medium' : 'Low';
+        }
+        
+        // Apply seasonal and biome adjustments
+        const seasonalBoost = getSeasonalBoost(lat, biome);
+        floweringScore = Math.min(1, floweringScore * seasonalBoost);
+        
+        return classifyFloweringScore(floweringScore, confidence, 'Current', biome);
+      }
+      
+      // Biome-specific climate fallback
+      let score = getBiomeBaseScore(biome, absLat);
+      return classifyFloweringScore(score, 'Very Low', 'Climate', biome);
+    }
+    
+    // Get base score for biome
+    function getBiomeBaseScore(biome, absLat) {
+      const biomeScores = {
+        tropical: 0.4,
+        temperate: 0.3,
+        arid: 0.15,
+        boreal: 0.25,
+        alpine: 0.2
+      };
+      
+      let score = biomeScores[biome] || 0.2;
+      
+      // Latitude adjustment
+      if (absLat < 23.5) score *= 1.2;
+      else if (absLat > 50) score *= 0.8;
+      
+      return Math.min(0.6, score);
+    }
+    
+    // Biome-aware change detection
+    function predictFloweringFromChange(lat, lng, changeData, thresholds, biome) {
+      const { current, previous, change } = changeData;
+      
+      if (!change.ndvi) {
+        return { label: 'No data', color: '#7b8696', score: 0, confidence: 'Low', analysis: 'Change', biome };
+      }
+      
+      let bloomProbability = 0;
+      let confidence = 'Medium';
+      
+      // Biome-specific change thresholds
+      const minChange = TEMPORAL_CONFIG.bloomingChangeMin * (thresholds.seasonalVariation || 1);
+      
+      // Positive NDVI change indicates potential blooming
+      if (change.ndvi > minChange) {
+        const changeRatio = change.ndvi / thresholds.ndvi.flowering;
+        bloomProbability = Math.min(0.95, (current.ndvi || 0) + (changeRatio * 0.4));
+        confidence = changeRatio > 0.3 ? 'High' : 'Medium';
+      } else if (change.ndvi > 0) {
+        bloomProbability = Math.min(0.7, current.ndvi || 0);
+        confidence = 'Medium';
+      } else {
+        // Negative change - vegetation decline
+        bloomProbability = Math.max(0, (current.ndvi || 0) * 0.7);
+        confidence = 'Low';
+      }
+      
+      return classifyFloweringScore(bloomProbability, confidence, 'Change Detection', biome);
+    }
+    
+    // Biome-aware trend analysis
+    function predictFloweringFromTrend(lat, lng, trendData, thresholds, biome) {
+      const { periods, trend } = trendData;
+      
+      if (!trend) {
+        return { label: 'Insufficient data', color: '#7b8696', score: 0, confidence: 'Low', analysis: 'Trend', biome };
+      }
+      
+      const currentNDVI = periods[0]?.ndvi || 0;
+      let bloomProbability = currentNDVI;
+      let confidence = 'Medium';
+      
+      // Biome-specific trend interpretation
+      const trendMultiplier = 2 + (thresholds.seasonalVariation || 0.3);
+      
+      if (trend.direction === 'increasing') {
+        // Strong increasing trend in vegetation
+        const trendBoost = trend.strength * trendMultiplier;
+        bloomProbability = Math.min(0.95, currentNDVI + trendBoost);
+        confidence = trend.strength > 0.1 ? 'High' : 'Medium';
+      } else if (trend.direction === 'decreasing') {
+        // Declining vegetation
+        const trendPenalty = trend.strength * (trendMultiplier * 0.5);
+        bloomProbability = Math.max(0.05, currentNDVI - trendPenalty);
+        confidence = 'Medium';
+      } else {
+        // Stable trend
+        bloomProbability = Math.min(0.8, currentNDVI * 1.1);
+        confidence = 'Medium';
+      }
+      
+      return classifyFloweringScore(bloomProbability, confidence, `Trend: ${trend.direction}`, biome);
+    }
+    
+    // Classify flowering score with biome context
+    function classifyFloweringScore(score, confidence, analysis, biome) {
+      const result = {
+        score: Math.round(score * 1000) / 1000,
+        confidence,
+        analysis,
+        biome: biome || 'unknown'
+      };
+      
+      if (score < 0.1) {
+        result.label = 'Very low';
+        result.color = '#bd7c5d';
+      } else if (score < 0.3) {
+        result.label = 'Low';
+        result.color = '#cca828';
+      } else if (score < 0.5) {
+        result.label = 'Medium';
+        result.color = '#e2e90c';
+      } else if (score < 0.7) {
+        result.label = 'High';
+        result.color = '#408b6d';
+      } else {
+        result.label = 'Very high';
+        result.color = '#0a544a';
+      }
+      
+      return result;
+    }
+    
+    // Biome-specific seasonal adjustments
+    function getSeasonalBoost(lat, biome) {
+      const month = new Date().getMonth(); // 0-11
+      const isNorthern = lat > 0;
+      
+      // Biome-specific seasonal patterns
+      const seasonalPatterns = {
+        tropical: {
+          // Wet/dry seasons more important than temperature
+          peak: isNorthern ? [4, 5, 9, 10] : [10, 11, 3, 4], // May, Jun, Oct, Nov
+          boost: 1.15
+        },
+        temperate: {
+          // Classic spring/summer flowering
+          peak: isNorthern ? [3, 4, 5, 6] : [9, 10, 11, 0], // Apr-Jul / Oct-Jan
+          boost: 1.3
+        },
+        arid: {
+          // Brief flowering after rains
+          peak: isNorthern ? [2, 3, 10, 11] : [8, 9, 4, 5], // Mar, Apr, Nov, Dec
+          boost: 1.4
+        },
+        boreal: {
+          // Short intense summer season
+          peak: isNorthern ? [5, 6, 7] : [11, 0, 1], // Jun-Aug / Dec-Feb
+          boost: 1.5
+        },
+        alpine: {
+          // Very short growing season
+          peak: isNorthern ? [6, 7] : [0, 1], // Jul-Aug / Jan-Feb
+          boost: 1.6
+        }
+      };
+      
+      const pattern = seasonalPatterns[biome] || seasonalPatterns.temperate;
+      return pattern.peak.includes(month) ? pattern.boost : 1.0;
+    }
+
+    // Enhanced pin information with temporal analysis
     async function updatePin(latlng) {
       const coords = `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
       
       try {
-        const ndviValue = await identifyNDVI(latlng);
-        const prediction = predictFlowering(latlng.lat, latlng.lng, ndviValue);
+        statusEl.textContent = 'Analyzing vegetation...';
+        const analysisData = await analyzeTemporalChange(latlng);
+        const prediction = predictFlowering(latlng.lat, latlng.lng, analysisData);
         
-        const html = `<b>Probabilidad de floración:</b> <b style="color:${prediction.color}">${prediction.label}</b><br>` +
-                     `<small>NDVI: ${ndviValue ? ndviValue.toFixed(2) : 'n/a'} | ${coords}</small>`;
+        let html = `<b>Flowering probability:</b> <b style="color:${prediction.color}">${prediction.label}</b><br>`;
+        
+        // Add analysis-specific information
+        if (analysisData?.type === 'change') {
+          const current = analysisData.current;
+          const change = analysisData.change;
+          html += `<small>Current NDVI: ${current?.ndvi?.toFixed(3) || 'n/a'}</small><br>`;
+          html += `<small>30-day change: ${change?.ndvi ? (change.ndvi > 0 ? '+' : '') + change.ndvi.toFixed(3) : 'n/a'}</small><br>`;
+        } else if (analysisData?.type === 'trend') {
+          const trend = analysisData.trend;
+          html += `<small>Trend: ${trend?.direction || 'unknown'} (${trend?.strength?.toFixed(3) || 'n/a'})</small><br>`;
+          html += `<small>Current NDVI: ${analysisData.periods[0]?.ndvi?.toFixed(3) || 'n/a'}</small><br>`;
+        } else {
+          const ndviText = analysisData?.ndvi?.toFixed(3) || 'n/a';
+          const eviText = analysisData?.evi?.toFixed(3) || 'n/a';
+          html += `<small>NDVI: ${ndviText} | EVI: ${eviText}</small><br>`;
+        }
+        
+        html += `<small>Biome: ${prediction.biome} | Confidence: ${prediction.confidence}</small><br>`;
+        html += `<small>${prediction.analysis} | ${coords}</small>`;
         
         if (!dragMarker) {
           dragMarker = L.marker(latlng, { draggable: true }).addTo(map);
@@ -187,13 +615,177 @@
         }
         
         dragMarker.bindPopup(html).openPopup();
+        statusEl.textContent = `${prediction.analysis} — ${prediction.confidence.toLowerCase()} confidence`;
+        
+        // Store analysis in history
+        analysisHistory.push({
+          timestamp: new Date().toISOString(),
+          coordinates: { lat: latlng.lat, lng: latlng.lng },
+          prediction: prediction,
+          analysisData: analysisData
+        });
+        
+        // Keep only last 50 analyses
+        if (analysisHistory.length > 50) {
+          analysisHistory.shift();
+        }
+        
+        // Check for bloom alerts
+        checkBloomAlerts(latlng, prediction);
         
       } catch (error) {
         console.error('Error updating pin:', error);
+        statusEl.textContent = 'Analysis failed';
       }
     }
+    
+    // Bloom alert system
+    function setBloomAlert(latlng, threshold = 0.6) {
+      const alertKey = `${Math.round(latlng.lat * 1000)}_${Math.round(latlng.lng * 1000)}`;
+      const alert = {
+        coordinates: latlng,
+        threshold: threshold,
+        created: new Date().toISOString(),
+        triggered: false
+      };
+      
+      bloomAlerts.set(alertKey, alert);
+      
+      // Visual indicator
+      const alertMarker = L.circleMarker(latlng, {
+        radius: 8,
+        color: '#ff6b35',
+        fillColor: '#ff6b35',
+        fillOpacity: 0.3,
+        weight: 2
+      }).addTo(map);
+      
+      alertMarker.bindTooltip(`Bloom Alert (${threshold.toFixed(1)} threshold)`);
+      alert.marker = alertMarker;
+      
+      statusEl.textContent = `Bloom alert set for ${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
+      return alert;
+    }
+    
+    function checkBloomAlerts(latlng, prediction) {
+      for (const [key, alert] of bloomAlerts.entries()) {
+        if (alert.triggered) continue;
+        
+        const distance = map.distance(latlng, alert.coordinates);
+        if (distance < 5000 && prediction.score >= alert.threshold) { // Within 5km
+          alert.triggered = true;
+          alert.triggerTime = new Date().toISOString();
+          
+          // Update marker style
+          if (alert.marker) {
+            alert.marker.setStyle({
+              color: '#00ff00',
+              fillColor: '#00ff00',
+              fillOpacity: 0.6
+            });
+            alert.marker.bindTooltip(`🌸 BLOOM DETECTED! Score: ${prediction.score.toFixed(2)}`);
+          }
+          
+          // Show notification
+          showBloomNotification(alert, prediction);
+        }
+      }
+    }
+    
+    function showBloomNotification(alert, prediction) {
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed; top: 80px; right: 20px; z-index: 10000;
+        background: linear-gradient(135deg, #00ff00, #32cd32);
+        color: white; padding: 12px 16px; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        font-weight: bold; animation: slideIn 0.3s ease;
+      `;
+      notification.innerHTML = `
+        🌸 BLOOM ALERT TRIGGERED!<br>
+        <small>Location: ${alert.coordinates.lat.toFixed(3)}, ${alert.coordinates.lng.toFixed(3)}</small><br>
+        <small>Probability: ${prediction.label} (${prediction.score.toFixed(2)})</small>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => notification.remove(), 300);
+      }, 5000);
+    }
+    
+    // Data export functionality
+    function exportAnalysisData() {
+      const exportData = {
+        metadata: {
+          exportTime: new Date().toISOString(),
+          totalAnalyses: analysisHistory.length,
+          activeAlerts: Array.from(bloomAlerts.values()).filter(a => !a.triggered).length,
+          triggeredAlerts: Array.from(bloomAlerts.values()).filter(a => a.triggered).length
+        },
+        analyses: analysisHistory,
+        alerts: Array.from(bloomAlerts.values()).map(alert => ({
+          coordinates: alert.coordinates,
+          threshold: alert.threshold,
+          created: alert.created,
+          triggered: alert.triggered,
+          triggerTime: alert.triggerTime
+        }))
+      };
+      
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json'
+      });
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bloom-analysis-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      statusEl.textContent = `Exported ${analysisHistory.length} analyses and ${bloomAlerts.size} alerts`;
+    }
+    
+    // Export as CSV for spreadsheet analysis
+    function exportAsCSV() {
+      const headers = [
+        'Timestamp', 'Latitude', 'Longitude', 'Biome', 'Analysis Type',
+        'Flowering Probability', 'Score', 'Confidence', 'NDVI', 'EVI'
+      ];
+      
+      const rows = analysisHistory.map(entry => [
+        entry.timestamp,
+        entry.coordinates.lat.toFixed(6),
+        entry.coordinates.lng.toFixed(6),
+        entry.prediction.biome,
+        entry.prediction.analysis,
+        entry.prediction.label,
+        entry.prediction.score.toFixed(3),
+        entry.prediction.confidence,
+        entry.analysisData?.ndvi?.toFixed(3) || 'n/a',
+        entry.analysisData?.evi?.toFixed(3) || 'n/a'
+      ]);
+      
+      const csvContent = [headers, ...rows]
+        .map(row => row.map(cell => `"${cell}"`).join(','))
+        .join('\n');
+      
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bloom-analysis-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
 
-    // Aplicar capa NDVI (optimizado)
+    // Apply NDVI layer (optimized)
     function applyLayer() {
       if (ndviLayer) map.removeLayer(ndviLayer);
       
@@ -206,41 +798,63 @@
       }).addTo(map);
       
       ndviLayer.once('load', () => {
-        statusEl.textContent = `NDVI cargado — ${currentDataset}`;
+        statusEl.textContent = `NDVI loaded — ${currentDataset}`;
       });
       
       ndviLayer.on('requesterror', () => {
-        statusEl.textContent = 'Error cargando NDVI';
+        statusEl.textContent = 'Error loading NDVI';
       });
     }
 
-    // Búsqueda optimizada
+    // Enhanced search with suggestions cache
     let searchTimeout;
+    const searchCache = new Map();
+    
     searchInput.addEventListener('input', (e) => {
       const query = e.target.value.trim();
       if (query.length < 3) return;
       
       clearTimeout(searchTimeout);
       searchTimeout = setTimeout(async () => {
+        const cached = searchCache.get(query);
+        if (cached && Date.now() - cached.timestamp < 600000) { // 10 min cache
+          processSearchResult(cached.data);
+          return;
+        }
+        
         try {
+          statusEl.textContent = 'Searching...';
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
+            `https://nominatim.openstreetmap.org/search?format=json&limit=3&q=${encodeURIComponent(query)}`
           );
           const results = await response.json();
           
-          if (results.length > 0) {
-            const result = results[0];
-            const latlng = L.latLng(parseFloat(result.lat), parseFloat(result.lon));
-            map.setView(latlng, 12);
-            updatePin(latlng);
-          }
+          searchCache.set(query, {
+            data: results,
+            timestamp: Date.now()
+          });
+          
+          processSearchResult(results);
         } catch (error) {
           console.error('Search error:', error);
+          statusEl.textContent = 'Search failed';
         }
-      }, 500);
+      }, 300);
     });
+    
+    function processSearchResult(results) {
+      if (results.length > 0) {
+        const result = results[0];
+        const latlng = L.latLng(parseFloat(result.lat), parseFloat(result.lon));
+        map.setView(latlng, 12);
+        updatePin(latlng);
+        statusEl.textContent = `Found: ${result.display_name.split(',')[0]}`;
+      } else {
+        statusEl.textContent = 'Location not found';
+      }
+    }
 
-    // Event listeners optimizados
+    // Optimized event listeners
     map.on('click', (e) => updatePin(e.latlng));
     
     datasetSel.addEventListener('change', () => {
@@ -248,8 +862,73 @@
       imageSvc = L.esri.imageService({ url: SERVICES[currentDataset] });
       applyLayer();
     });
+    
+    temporalSel.addEventListener('change', () => {
+      if (dragMarker) {
+        updatePin(dragMarker.getLatLng());
+      }
+    });
+    
+    alertBtn.addEventListener('click', () => {
+      if (!dragMarker) {
+        statusEl.textContent = 'Click on map first to select location';
+        return;
+      }
+      
+      const threshold = prompt('Enter bloom probability threshold (0.1-0.9):', '0.6');
+      if (threshold && !isNaN(threshold)) {
+        const thresholdNum = Math.max(0.1, Math.min(0.9, parseFloat(threshold)));
+        setBloomAlert(dragMarker.getLatLng(), thresholdNum);
+      }
+    });
+    
+    exportBtn.addEventListener('click', (e) => {
+      if (e.shiftKey) {
+        exportAsCSV();
+      } else {
+        exportAnalysisData();
+      }
+    });
 
-    // Inicialización
+    // Add CSS animations for notifications
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes slideIn {
+        from { transform: translateX(100%); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+      }
+      @keyframes slideOut {
+        from { transform: translateX(0); opacity: 1; }
+        to { transform: translateX(100%); opacity: 0; }
+      }
+      #alertBtn, #exportBtn {
+        background: var(--panel); color: var(--text);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: .5rem; padding: .35rem .5rem;
+        cursor: pointer; font-size: 14px;
+      }
+      #alertBtn:hover, #exportBtn:hover {
+        background: rgba(255,255,255,.1);
+      }
+    `;
+    document.head.appendChild(style);
+    
+    // Cache cleanup every 10 minutes
+    setInterval(() => {
+      const now = Date.now();
+      for (const [key, value] of ndviCache.entries()) {
+        if (now - value.timestamp > CACHE_DURATION) {
+          ndviCache.delete(key);
+        }
+      }
+      for (const [key, value] of searchCache.entries()) {
+        if (now - value.timestamp > 600000) {
+          searchCache.delete(key);
+        }
+      }
+    }, 600000);
+    
+    // Initialization
     applyLayer();
     setTimeout(() => updatePin(L.latLng(-33.4489, -70.6693)), 1000);
   </script>
