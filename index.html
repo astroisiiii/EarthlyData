@@ -3,39 +3,77 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07173F" />
   <title>EarthlyData — Where the Earth Speaks in Color</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700&family=Fira+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-    body {
-      background: linear-gradient(180deg, #e8f5e9 0%, #dcedc8 100%);
-      color: #1b5e20;
+    :root {
+      --deep-blue: #07173F;
+      --electric-blue: #0042A6;
+      --neon-yellow: #EAFE07;
+      --white: #FFFFFF;
+      --gradient: linear-gradient(45deg, var(--electric-blue), var(--deep-blue));
     }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Fira Sans', sans-serif;
+      background: var(--gradient);
+      color: var(--white);
+      line-height: 1.6;
+    }
+    /* NASA Space Apps: start */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 3rem;
-      background: rgba(232,245,233,0.9); /* light green translucent */
-      backdrop-filter: blur(10px);
+      padding: 1rem 2rem;
+      background: var(--deep-blue);
       position: sticky;
       top: 0;
-      box-shadow: 0 4px 10px rgba(46,125,50,0.08);
+      z-index: 1000;
+      border-bottom: 2px solid var(--electric-blue);
     }
-    header h1 { font-size: 1.8rem; color: #2e7d32; font-weight: 700; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo img {
+      height: 40px;
+      width: auto;
+    }
+    .logo h1 {
+      font-family: 'Overpass', sans-serif;
+      font-size: 1.5rem;
+      color: var(--white);
+      font-weight: 700;
+    }
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
     nav a {
-      margin-left: 2rem;
+      font-family: 'Fira Sans', sans-serif;
       text-decoration: none;
-      color: #2e7d32;
+      color: var(--white);
       font-weight: 500;
-      transition: color 0.3s;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      outline: 2px solid transparent;
     }
-    nav a:hover { color: #2e7d32; }
-    nav a[aria-disabled="true"] {
-      color: #a5d6a7; /* muted green */
-      cursor: default;
-      pointer-events: none;
-      opacity: 0.95;
+    nav a:hover, nav a:focus {
+      background-color: var(--electric-blue);
+      outline: 2px solid var(--neon-yellow);
     }
+    nav a.active {
+      background-color: var(--neon-yellow);
+      color: var(--deep-blue);
+      font-weight: 600;
+    }
+    /* NASA Space Apps: end */
 
     .hero {
       display: flex;
@@ -44,36 +82,61 @@
       justify-content: center;
       text-align: center;
       padding: 6rem 2rem;
-  background: url('https://s.hdnux.com/photos/01/32/30/37/23693267/3/ratio3x2_1440.webp') center/cover no-repeat;
-      color: #ffffff;
+      background: url('https://s.hdnux.com/photos/01/32/30/37/23693267/3/ratio3x2_1440.webp') center/cover no-repeat;
+      color: var(--white);
       position: relative;
     }
     .hero::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: rgba(46,125,50,0.55); /* green overlay */
+      background: linear-gradient(45deg, rgba(7,23,63,0.8), rgba(0,66,166,0.6));
     }
     .hero > * { position: relative; z-index: 1; }
-    .hero h2 { font-size: 2.8rem; margin-bottom: 1rem; font-weight: 700; }
-    .hero p { max-width: 700px; margin-bottom: 2rem; font-size: 1.1rem; }
+    .hero h2 {
+      font-family: 'Overpass', sans-serif;
+      font-size: 2.8rem;
+      margin-bottom: 1rem;
+      font-weight: 700;
+      color: var(--white);
+    }
+    .hero p {
+      max-width: 700px;
+      margin-bottom: 2rem;
+      font-size: 1.1rem;
+      color: var(--white);
+    }
     .btn-primary {
-      background: #4caf50;
-      color: #ffffff;
-      padding: 0.8rem 1.5rem;
-      border-radius: 30px;
+      background: var(--neon-yellow);
+      color: var(--deep-blue);
+      padding: 1rem 2rem;
+      border-radius: 8px;
       text-decoration: none;
       font-weight: 600;
-      transition: background 0.3s;
+      font-family: 'Fira Sans', sans-serif;
+      transition: all 0.3s ease;
+      outline: 2px solid transparent;
+      border: none;
     }
-    .btn-primary:hover { background: #66bb6a; }
+    .btn-primary:hover, .btn-primary:focus {
+      background: var(--white);
+      outline: 2px solid var(--neon-yellow);
+      transform: translateY(-2px);
+    }
 
     section {
       padding: 4rem 2rem;
       max-width: 1100px;
       margin: auto;
     }
-  .section-title { text-align: center; margin-bottom: 2rem; font-size: 2rem; color: #2e7d32; }
+    .section-title {
+      font-family: 'Overpass', sans-serif;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+      color: var(--white);
+      font-weight: 600;
+    }
 
     .cards {
       display: grid;
@@ -88,37 +151,97 @@
       margin: 0 auto;
     }
     .card {
-      background: #e8f5e9;
-      border-radius: 15px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
       padding: 1.5rem;
-      box-shadow: 0 2px 10px rgba(46,125,50,0.08);
-      transition: transform 0.3s, box-shadow 0.3s;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
     }
     .card:hover {
       transform: translateY(-5px);
-      box-shadow: 0 4px 15px rgba(46,125,50,0.14);
+      background: rgba(255,255,255,0.15);
+      border-color: var(--neon-yellow);
     }
-  .card h3 { color: #2e7d32; margin-bottom: 0.5rem; }
-  .card p { color: #1b5e20; }
+    .card h3 {
+      font-family: 'Overpass', sans-serif;
+      color: var(--neon-yellow);
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+    }
+    .card p {
+      color: var(--white);
+      line-height: 1.6;
+    }
 
+    /* NASA Space Apps: start */
     footer {
-      background: #4caf50;
-      color: #ffffff;
-      text-align: center;
-      padding: 2rem;
-      font-weight: 500;
+      background: var(--deep-blue);
+      color: var(--white);
+      padding: 3rem 2rem 2rem;
+      border-top: 2px solid var(--electric-blue);
     }
-    footer p { opacity: 0.95; }
+    .footer-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 2rem;
+      align-items: center;
+    }
+    .footer-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .footer-logo img {
+      height: 24px;
+      width: auto;
+    }
+    .footer-legal {
+      text-align: center;
+      font-size: 0.9rem;
+    }
+    .footer-legal strong {
+      color: var(--neon-yellow);
+    }
+    .footer-links {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1.5rem;
+    }
+    .footer-links a {
+      color: var(--white);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: color 0.3s ease;
+      outline: 2px solid transparent;
+      padding: 0.25rem;
+      border-radius: 4px;
+    }
+    .footer-links a:hover, .footer-links a:focus {
+      color: var(--neon-yellow);
+      outline: 2px solid var(--neon-yellow);
+    }
+    /* NASA Space Apps: end */
   </style>
 </head>
 <body>
+  <!-- NASA Space Apps: start -->
   <header>
-    <h1>EarthlyData</h1>
+    <div class="logo">
+      <!-- Place official NASA Space Apps logo here: /assets/space-apps-logo.svg -->
+      <img src="/assets/space-apps-logo.svg" alt="NASA Space Apps Challenge" onerror="this.style.display='none'">
+      <h1>EarthlyData</h1>
+      <img src="logonasa.png" alt="NASA Logo" style="height: 40px; width: auto; margin-left: 1rem;">
+    </div>
     <nav>
+      <a href="index.html" class="active" aria-current="page">Home</a>
       <a href="mapa.html">Map</a>
       <a href="mapa-plagas.html">Pest Map</a>
     </nav>
   </header>
+  <!-- NASA Space Apps: end -->
 
   <section class="hero">
     <h2>Where the Earth Speaks in Color</h2>
@@ -165,8 +288,22 @@
   </section>
 
 
+  <!-- NASA Space Apps: start -->
   <footer>
-    <p>© 2025 EarthlyData — Project for the NASA Space Apps Challenge. Science that blooms for a sustainable future.</p>
+    <div class="footer-content">
+      <div class="footer-logo">
+        <img src="/assets/space-apps-logo.svg" alt="NASA Space Apps Challenge" onerror="this.style.display='none'">
+      </div>
+      <div class="footer-legal">
+        <strong>Project for the NASA Space Apps Challenge 2025</strong><br>
+        Science that blooms for a sustainable future
+      </div>
+      <div class="footer-links">
+        <a href="#privacy">Privacy</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
   </footer>
+  <!-- NASA Space Apps: end -->
 </body>
 </html>

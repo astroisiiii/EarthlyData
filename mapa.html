@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#07173F" />
   <title>EarthlyData 🌍 Mapa Global</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Overpass:wght@400;600;700&family=Fira+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Leaflet y MarkerClusterx -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
@@ -11,67 +15,119 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster/dist/MarkerCluster.Default.css" />
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
   <script src="https://unpkg.com/leaflet.markercluster/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/esri-leaflet@3/dist/esri-leaflet.js"></script>
 
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
-    body {
-      background: linear-gradient(180deg, #fffde7 0%, #fff8e1 100%);
-      color: #5a4a00;
+    :root {
+      --deep-blue: #07173F;
+      --electric-blue: #0042A6;
+      --neon-yellow: #EAFE07;
+      --white: #FFFFFF;
+      --gradient: linear-gradient(45deg, var(--electric-blue), var(--deep-blue));
     }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Fira Sans', sans-serif;
+      background: var(--gradient);
+      color: var(--white);
+      padding-top: 80px;
+    }
+    /* NASA Space Apps: start */
     header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 1.5rem 3rem;
-      background: rgba(165,214,167,0.95);
-      backdrop-filter: blur(10px);
-      position: sticky;
+      padding: 1rem 2rem;
+      background: var(--deep-blue);
+      position: fixed;
       top: 0;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      border-bottom: 2px solid var(--electric-blue);
     }
-    header h1 { font-size: 1.8rem; color: #2e7d32; font-weight: 700; }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .logo img {
+      height: 40px;
+      width: auto;
+    }
+    .logo h1 {
+      font-family: 'Overpass', sans-serif;
+      font-size: 1.5rem;
+      color: var(--white);
+      font-weight: 700;
+    }
+    nav {
+      display: flex;
+      gap: 2rem;
+    }
     nav a {
-      margin-left: 2rem;
+      font-family: 'Fira Sans', sans-serif;
       text-decoration: none;
-      color: #388e3c;
+      color: var(--white);
       font-weight: 500;
-      transition: color 0.3s;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      outline: 2px solid transparent;
     }
-    nav a:hover { color: #66bb6a; }
+    nav a:hover, nav a:focus {
+      background-color: var(--electric-blue);
+      outline: 2px solid var(--neon-yellow);
+    }
+    nav a.active {
+      background-color: var(--neon-yellow);
+      color: var(--deep-blue);
+      font-weight: 600;
+    }
+    /* NASA Space Apps: end */
     
     #selector {
       text-align: center;
       padding: 2rem;
       max-width: 1100px;
       margin: auto;
+      background: rgba(255,255,255,0.1);
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+      margin-bottom: 1rem;
     }
     
     select {
-      background: #fff8e1;
-      border: 1px solid #f9a825;
-      border-radius: 15px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 8px;
       padding: 0.8rem 1.5rem;
       font-size: 1rem;
-      color: #5a4a00;
+      color: var(--white);
       margin: 0 0.5rem;
       font-weight: 500;
       transition: all 0.3s;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      font-family: 'Fira Sans', sans-serif;
     }
-    select:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
-      background: #ffee58;
+    select option {
+      color: var(--electric-blue);
+      background: white;
+    }
+    select:hover, select:focus {
+      background: rgba(255,255,255,0.2);
+      border-color: var(--neon-yellow);
+      outline: 2px solid var(--neon-yellow);
     }
     
     #map, #windyContainer { 
-      width: 100%; 
+      width: calc(100% - 4rem); 
       height: 75vh; 
       display: none;
       border-radius: 15px;
       overflow: hidden;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       margin: 0 2rem;
+      border: 2px solid rgba(255,255,255,0.2);
     }
     #windyContainer { text-align: center; }
     #map { display: block; }
@@ -87,14 +143,15 @@
       position: absolute; 
       bottom: 20px; 
       left: 20px; 
-      background: rgba(255,255,255,0.95);
+      background: rgba(7,23,63,0.95);
       padding: 10px 15px;
       border-radius: 15px;
       font-size: 13px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       z-index: 1000;
-      color: #5a4a00;
+      color: var(--white);
       font-weight: 500;
+      border: 1px solid var(--electric-blue);
     }
     
     #btnUbicacion {
@@ -102,20 +159,23 @@
       bottom: 20px; 
       right: 20px; 
       z-index: 1000;
-      background: #4caf50;
-      color: white;
+      background: var(--neon-yellow);
+      color: var(--deep-blue);
       border: none;
       padding: 12px 18px;
       border-radius: 30px;
       cursor: pointer;
       font-weight: 600;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
       transition: all 0.3s;
+      font-family: 'Fira Sans', sans-serif;
+      outline: 2px solid transparent;
     }
-    #btnUbicacion:hover { 
-      background: #66bb6a;
+    #btnUbicacion:hover, #btnUbicacion:focus { 
+      background: var(--white);
+      outline: 2px solid var(--neon-yellow);
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.4);
     }
     
     /* === LÍNEA DE TIEMPO === */
@@ -192,19 +252,27 @@
 </head>
 <body>
 
-<header>
-  <h1>EarthlyData</h1>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="mapa.html">Map</a>
-    <a href="mapa-plagas.html">Pest Map</a>
-  </nav>
-</header>
+  <!-- NASA Space Apps: start -->
+  <header>
+    <div class="logo">
+      <!-- Place official NASA Space Apps logo here: /assets/space-apps-logo.svg -->
+      <img src="/assets/space-apps-logo.svg" alt="NASA Space Apps Challenge" onerror="this.style.display='none'">
+      <h1>EarthlyData</h1>
+      <img src="logonasa.png" alt="NASA Logo" style="height: 40px; width: auto; margin-left: 1rem;">
+    </div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="mapa.html" class="active" aria-current="page">Map</a>
+      <a href="mapa-plagas.html">Pest Map</a>
+    </nav>
+  </header>
+  <!-- NASA Space Apps: end -->
 
 <div id="selector">
   <label for="mapSelect"><b>Select map:</b></label>
   <select id="mapSelect" onchange="cambiarMapa()">
     <option value="floracion">🌸 Flowering</option>
+    <option value="floweringAdvanced">🌿 Flowering Advanced (NDVI)</option>
     <option value="clima">🌦️ Climate (Windy)</option>
   </select>
 
@@ -220,6 +288,13 @@
     <option value="alta">🌿 High flowering</option>
     <option value="baja">🍂 Low flowering</option>
   </select>
+  
+  <select id="ndviDataset" onchange="cambiarDatasetNDVI()" style="display:none;">
+    <option value="landsat" selected>Landsat 8/9</option>
+    <option value="sentinel">Sentinel‑2</option>
+  </select>
+  
+  <input id="ndviSearch" type="text" placeholder="Search location..." style="display:none;" />
 </div>
 
 <div id="map"></div>
@@ -252,6 +327,20 @@
   </div>
 </div>
 
+<!-- NDVI LEGEND -->
+<div id="ndviLegend" style="position:absolute;bottom:20px;left:20px;background:rgba(7,23,63,0.95);color:white;padding:10px 15px;border-radius:15px;font-size:13px;box-shadow:0 4px 15px rgba(0,0,0,0.3);z-index:1000;border:1px solid #0042A6;display:none;min-width:260px;">
+  <div><strong>NDVI → Flowering Probability</strong></div>
+  <div style="height:10px;width:100%;background:linear-gradient(90deg,#bd7c5d 0%,#bd7c5d 20%,#cca828 20%,#cca828 40%,#e2e90c 40%,#e2e90c 60%,#408b6d 60%,#408b6d 80%,#0a544a 80%,#0a544a 100%);border-radius:999px;margin:8px 0;"></div>
+  <div style="display:flex;justify-content:space-between;opacity:0.9;"><span>Low</span><span>High</span></div>
+  <div style="margin-top:8px;line-height:1.2;">
+    <div><span style="display:inline-block;width:14px;height:10px;background:#bd7c5d;border-radius:2px;margin-right:6px;"></span><small>Very low (&lt; 0.20)</small></div>
+    <div><span style="display:inline-block;width:14px;height:10px;background:#cca828;border-radius:2px;margin-right:6px;"></span><small>Low (0.20–0.40)</small></div>
+    <div><span style="display:inline-block;width:14px;height:10px;background:#e2e90c;border-radius:2px;margin-right:6px;"></span><small>Medium (0.40–0.60)</small></div>
+    <div><span style="display:inline-block;width:14px;height:10px;background:#408b6d;border-radius:2px;margin-right:6px;"></span><small>High (0.60–0.80)</small></div>
+    <div><span style="display:inline-block;width:14px;height:10px;background:#0a544a;border-radius:2px;margin-right:6px;"></span><small>Very high (≥ 0.80)</small></div>
+  </div>
+</div>
+
 <script>
   // === MAPA LEAFLET ===
   const map = L.map('map').setView([10, 0], 2);
@@ -263,6 +352,16 @@
   const capaFloracion = L.markerClusterGroup();
   const capaZonas = L.layerGroup().addTo(map);
   let marcadorUsuario = null;
+  
+  // === NDVI ADVANCED ===
+  const NDVI_SERVICES = {
+    landsat: 'https://landsat2.arcgis.com/arcgis/rest/services/Landsat8_Views/ImageServer',
+    sentinel: 'https://sentinel.arcgis.com/arcgis/rest/services/Sentinel2/ImageServer'
+  };
+  let ndviLayer = null;
+  let ndviImageSvc = null;
+  let ndviMarker = null;
+  let currentNDVIDataset = 'landsat';
 
   // === LÍNEA DE TIEMPO ===
   const periodoCompleto = [
@@ -385,21 +484,47 @@
     const windyDiv = document.getElementById('windyContainer');
     const layerSelect = document.getElementById('layerSelect');
     const timeline = document.getElementById('timeline');
+    const ndviDataset = document.getElementById('ndviDataset');
+    const ndviSearch = document.getElementById('ndviSearch');
+    const filtroFloracion = document.getElementById('filtroFloracion');
+
+    // Reset visibility
+    layerSelect.style.display = "none";
+    timeline.style.display = "none";
+    ndviDataset.style.display = "none";
+    ndviSearch.style.display = "none";
+    filtroFloracion.style.display = "inline-block";
+    
+    // Clear NDVI layer
+    if (ndviLayer) {
+      map.removeLayer(ndviLayer);
+      ndviLayer = null;
+    }
 
     if (tipo === "clima") {
       mapDiv.style.display = "none";
       windyDiv.style.display = "block";
       layerSelect.style.display = "inline-block";
-      timeline.style.display = "none";
+      filtroFloracion.style.display = "none";
       cambiarCapaClima();
+    } else if (tipo === "floweringAdvanced") {
+      mapDiv.style.display = "block";
+      windyDiv.style.display = "none";
+      ndviDataset.style.display = "inline-block";
+      ndviSearch.style.display = "inline-block";
+      filtroFloracion.style.display = "none";
+      map.removeLayer(capaFloracion);
+      document.getElementById('ndviLegend').style.display = "block";
+      inicializarNDVI();
+      setTimeout(() => map.invalidateSize(), 200);
     } else {
       mapDiv.style.display = "block";
       windyDiv.style.display = "none";
-      layerSelect.style.display = "none";
       
       if (tipo === "floracion") {
         map.addLayer(capaFloracion);
         timeline.style.display = "block";
+        document.getElementById('ndviLegend').style.display = "none";
       }
       setTimeout(() => map.invalidateSize(), 200);
     }
@@ -524,6 +649,158 @@
   });
 
   document.getElementById('playBtn').addEventListener('click', reproducirTimeline);
+  
+  // === NDVI ADVANCED FUNCTIONS ===
+  function inicializarNDVI() {
+    if (!ndviImageSvc) {
+      ndviImageSvc = L.esri.imageService({ url: NDVI_SERVICES[currentNDVIDataset] });
+    }
+    aplicarCapaNDVI();
+    map.on('click', analizarNDVI);
+  }
+  
+  function aplicarCapaNDVI() {
+    if (ndviLayer) map.removeLayer(ndviLayer);
+    
+    const rfName = currentNDVIDataset === 'landsat' ? 'NDVI Colorized' : 'NDVI Colormap';
+    
+    ndviLayer = L.esri.imageMapLayer({
+      url: NDVI_SERVICES[currentNDVIDataset],
+      renderingRule: { rasterFunction: rfName },
+      opacity: 0.8
+    }).addTo(map);
+  }
+  
+  async function analizarNDVI(e) {
+    const latlng = e.latlng;
+    
+    if (ndviMarker) map.removeLayer(ndviMarker);
+    ndviMarker = L.marker(latlng, { draggable: true }).addTo(map);
+    
+    try {
+      const ndviValue = await obtenerNDVI(latlng);
+      const prediction = predecirFloracionNDVI(latlng.lat, latlng.lng, ndviValue);
+      
+      const html = `
+        <b>🌿 Flowering Analysis (NDVI)</b><br>
+        <b style="color:${prediction.color}">${prediction.label}</b><br>
+        <small>NDVI: ${ndviValue?.toFixed(3) || 'n/a'}</small><br>
+        <small>Confidence: ${prediction.confidence}</small><br>
+        <small>${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}</small>
+      `;
+      
+      ndviMarker.bindPopup(html).openPopup();
+      ndviMarker.on('dragend', (ev) => analizarNDVI({latlng: ev.target.getLatLng()}));
+      
+    } catch (error) {
+      console.error('Error analyzing NDVI:', error);
+    }
+  }
+  
+  function obtenerNDVI(latlng) {
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(null), 5000);
+      
+      ndviImageSvc.identify()
+        .at(latlng)
+        .setRenderingRule({ rasterFunction: 'NDVI Raw' })
+        .run((err, res) => {
+          clearTimeout(timeout);
+          
+          if (err || !res) {
+            resolve(null);
+            return;
+          }
+          
+          let value = null;
+          if (res.value !== undefined) value = Number(res.value);
+          else if (res.pixel?.value !== undefined) value = Number(res.pixel.value);
+          else if (res.values?.length) value = Number(res.values[0]);
+          
+          resolve(value !== null && !isNaN(value) ? Math.max(-1, Math.min(1, value)) : null);
+        });
+    });
+  }
+  
+  function predecirFloracionNDVI(lat, lng, ndvi) {
+    const absLat = Math.abs(lat);
+    
+    if (absLat > 80 || ndvi === null) {
+      return { label: 'No data', color: '#7b8696', confidence: 'Low' };
+    }
+    
+    let score = 0;
+    let confidence = 'Low';
+    
+    if (ndvi > 0.7) {
+      score = 0.9;
+      confidence = 'Very High';
+    } else if (ndvi > 0.5) {
+      score = 0.7;
+      confidence = 'High';
+    } else if (ndvi > 0.3) {
+      score = 0.5;
+      confidence = 'Medium';
+    } else if (ndvi > 0.1) {
+      score = 0.3;
+      confidence = 'Low';
+    } else {
+      score = 0.1;
+      confidence = 'Very Low';
+    }
+    
+    // Seasonal boost
+    const month = new Date().getMonth();
+    const isNorthern = lat > 0;
+    const springMonths = isNorthern ? [2,3,4,5] : [8,9,10,11];
+    if (springMonths.includes(month)) score *= 1.2;
+    
+    score = Math.min(1, score);
+    
+    if (score < 0.2) {
+      return { label: 'Very low', color: '#bd7c5d', confidence };
+    } else if (score < 0.4) {
+      return { label: 'Low', color: '#cca828', confidence };
+    } else if (score < 0.6) {
+      return { label: 'Medium', color: '#e2e90c', confidence };
+    } else if (score < 0.8) {
+      return { label: 'High', color: '#408b6d', confidence };
+    } else {
+      return { label: 'Very high', color: '#0a544a', confidence };
+    }
+  }
+  
+  function cambiarDatasetNDVI() {
+    currentNDVIDataset = document.getElementById('ndviDataset').value;
+    ndviImageSvc = L.esri.imageService({ url: NDVI_SERVICES[currentNDVIDataset] });
+    aplicarCapaNDVI();
+  }
+  
+  // NDVI Search
+  let searchTimeout;
+  document.getElementById('ndviSearch').addEventListener('input', (e) => {
+    const query = e.target.value.trim();
+    if (query.length < 3) return;
+    
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(async () => {
+      try {
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(query)}`
+        );
+        const results = await response.json();
+        
+        if (results.length > 0) {
+          const result = results[0];
+          const latlng = L.latLng(parseFloat(result.lat), parseFloat(result.lon));
+          map.setView(latlng, 12);
+          analizarNDVI({latlng});
+        }
+      } catch (error) {
+        console.error('Search error:', error);
+      }
+    }, 500);
+  });
 
   // === INICIALIZAR ===
   document.addEventListener('DOMContentLoaded', () => {
@@ -553,5 +830,23 @@
     setTimeout(obtenerUbicacionAutomatica, 1000);
   });
 </script>
+
+  <!-- NASA Space Apps: start -->
+  <footer style="background: var(--deep-blue); color: var(--white); padding: 3rem 2rem 2rem; border-top: 2px solid var(--electric-blue); margin-top: 2rem;">
+    <div style="max-width: 1100px; margin: 0 auto; display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 2rem; align-items: center;">
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <img src="/assets/space-apps-logo.svg" alt="NASA Space Apps Challenge" style="height: 24px; width: auto;" onerror="this.style.display='none'">
+      </div>
+      <div style="text-align: center; font-size: 0.9rem;">
+        <strong style="color: var(--neon-yellow);">Project for the NASA Space Apps Challenge 2025</strong><br>
+        Science that blooms for a sustainable future
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 1.5rem;">
+        <a href="#privacy" style="color: var(--white); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease; outline: 2px solid transparent; padding: 0.25rem; border-radius: 4px;" onmouseover="this.style.color='var(--neon-yellow)'; this.style.outline='2px solid var(--neon-yellow)'" onmouseout="this.style.color='var(--white)'; this.style.outline='2px solid transparent'">Privacy</a>
+        <a href="#contact" style="color: var(--white); text-decoration: none; font-size: 0.9rem; transition: color 0.3s ease; outline: 2px solid transparent; padding: 0.25rem; border-radius: 4px;" onmouseover="this.style.color='var(--neon-yellow)'; this.style.outline='2px solid var(--neon-yellow)'" onmouseout="this.style.color='var(--white)'; this.style.outline='2px solid transparent'">Contact</a>
+      </div>
+    </div>
+  </footer>
+  <!-- NASA Space Apps: end -->
 </body>
 </html>
